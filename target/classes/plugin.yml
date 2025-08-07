@@ -1,11 +1,11 @@
 name: BountyHunter
-version: 1.0
+version: 2.0
 main: com.jared.bountyhunter.BountyHunter
 api-version: 1.20
-description: A bounty hunting plugin for Minecraft servers
+description: A GUI-based bounty hunting plugin with diamond, emerald, and netherite currency
 
 commands:
   bounty:
     description: Place, list, or remove bounties on players
-    usage: /bounty <set|list|remove> [player] [amount]
+    usage: /bounty <gui|set|list|remove> [player] [currency] [amount]
     aliases: [bh, bounties]

@@ -1,3 +1,14 @@
-com\jared\bountyhunter\BountyCommand.class
-com\jared\bountyhunter\BountyHunter.class
 com\jared\bountyhunter\BountyListener.class
+com\jared\bountyhunter\BountyManager$1.class
+com\jared\bountyhunter\PlayerSelectionManager.class
+com\jared\bountyhunter\BountyGUIListener.class
+com\jared\bountyhunter\BountyListener$1.class
+com\jared\bountyhunter\BountyGUI$1.class
+com\jared\bountyhunter\BountyCommand.class
+com\jared\bountyhunter\BountyManager.class
+com\jared\bountyhunter\BountyHunter.class
+com\jared\bountyhunter\BountyData$CurrencyType.class
+com\jared\bountyhunter\BountyData.class
+com\jared\bountyhunter\BountyGUI.class
+com\jared\bountyhunter\ChatListener.class
+com\jared\bountyhunter\BountyCommand$1.class

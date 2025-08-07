@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 public class BountyCommand implements CommandExecutor {
-    public static HashMap<UUID, Double> bounties = new HashMap<>();
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -21,11 +20,14 @@ public class BountyCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty <set|list|remove> [player] [amount]");
+            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove> [player] [currency] [amount]");
             return true;
         }
 
         switch (args[0].toLowerCase()) {
+            case "gui":
+                BountyGUI.openMainMenu(player);
+                return true;
             case "set":
                 return handleSetBounty(player, args);
             case "list":
@@ -33,14 +35,15 @@ public class BountyCommand implements CommandExecutor {
             case "remove":
                 return handleRemoveBounty(player, args);
             default:
-                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: set, list, or remove");
+                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, or remove");
                 return true;
         }
     }
 
     private boolean handleSetBounty(Player player, String[] args) {
-        if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty set <player> <amount>");
+        if (args.length < 4) {
+            player.sendMessage(ChatColor.RED + "Usage: /bounty set <player> <currency> <amount>");
+            player.sendMessage(ChatColor.GRAY + "Currency options: diamond, emerald, netherite");
             return true;
         }
 
@@ -56,45 +59,43 @@ public class BountyCommand implements CommandExecutor {
         }
 
         // Check if bounty already exists
-        if (bounties.containsKey(target.getUniqueId())) {
+        if (BountyManager.hasBounty(target.getUniqueId())) {
             player.sendMessage(ChatColor.RED + "A bounty already exists on " + target.getName() + "!");
             return true;
         }
 
+        // Parse currency type
+        BountyData.CurrencyType currency;
         try {
-            double amount = Double.parseDouble(args[2]);
+            currency = BountyData.CurrencyType.valueOf(args[2].toUpperCase());
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(ChatColor.RED + "Invalid currency: " + args[2]);
+            player.sendMessage(ChatColor.GRAY + "Valid currencies: diamond, emerald, netherite");
+            return true;
+        }
+
+        try {
+            int amount = Integer.parseInt(args[3]);
             if (amount <= 0) {
                 player.sendMessage(ChatColor.RED + "Amount must be positive.");
                 return true;
             }
 
-            if (amount < 1.0) {
-                player.sendMessage(ChatColor.RED + "Minimum bounty amount is $1.00");
+            if (amount > 64) {
+                player.sendMessage(ChatColor.RED + "Maximum bounty amount is 64.");
                 return true;
             }
 
-            if (BountyHunter.getEconomy().getBalance(player) < amount) {
-                player.sendMessage(ChatColor.RED + "You don't have enough money! You have: $" + 
-                    String.format("%.2f", BountyHunter.getEconomy().getBalance(player)));
-                return true;
-            }
-
-            // Withdraw money and set bounty
-            BountyHunter.getEconomy().withdrawPlayer(player, amount);
-            bounties.put(target.getUniqueId(), amount);
-            
-            player.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", amount) + 
-                " placed on " + target.getName() + "!");
-            Bukkit.broadcastMessage(ChatColor.GOLD + player.getName() + " placed a bounty of $" + 
-                String.format("%.2f", amount) + " on " + target.getName() + "!");
+            BountyManager.setBounty(target, player, currency, amount);
             
         } catch (NumberFormatException e) {
-            player.sendMessage(ChatColor.RED + "Invalid amount: " + args[2]);
+            player.sendMessage(ChatColor.RED + "Invalid amount: " + args[3]);
         }
         return true;
     }
 
     private boolean handleListBounties(Player player) {
+        HashMap<UUID, BountyData> bounties = BountyManager.getBounties();
         if (bounties.isEmpty()) {
             player.sendMessage(ChatColor.YELLOW + "No active bounties.");
             return true;
@@ -104,9 +105,11 @@ public class BountyCommand implements CommandExecutor {
         for (UUID uuid : bounties.keySet()) {
             Player targetPlayer = Bukkit.getPlayer(uuid);
             if (targetPlayer != null) {
-                double reward = bounties.get(uuid);
+                BountyData bounty = bounties.get(uuid);
+                String currencyName = getCurrencyName(bounty.getCurrency());
                 player.sendMessage(ChatColor.GRAY + "- " + targetPlayer.getName() + 
-                    ": $" + String.format("%.2f", reward));
+                    ": " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") +
+                    " (set by " + bounty.getPlacedBy() + ")");
             }
         }
         return true;
@@ -124,16 +127,33 @@ public class BountyCommand implements CommandExecutor {
             return true;
         }
 
-        if (!bounties.containsKey(target.getUniqueId())) {
+        if (!BountyManager.hasBounty(target.getUniqueId())) {
             player.sendMessage(ChatColor.RED + "No bounty exists on " + target.getName() + ".");
             return true;
         }
 
-        double amount = bounties.remove(target.getUniqueId());
-        BountyHunter.getEconomy().depositPlayer(player, amount);
-        
-        player.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", amount) + 
-            " removed from " + target.getName() + " and refunded to you!");
+        BountyData bounty = BountyManager.getBounty(target.getUniqueId());
+        if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
+            BountyManager.removeBounty(target.getUniqueId());
+            String currencyName = getCurrencyName(bounty.getCurrency());
+            player.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
+                currencyName + (bounty.getAmount() > 1 ? "s" : "") + " removed from " + target.getName() + "!");
+        } else {
+            player.sendMessage(ChatColor.RED + "You can only remove bounties that you placed!");
+        }
         return true;
+    }
+    
+    private String getCurrencyName(BountyData.CurrencyType currency) {
+        switch (currency) {
+            case DIAMOND:
+                return "Diamond";
+            case EMERALD:
+                return "Emerald";
+            case NETHERITE:
+                return "Netherite Ingot";
+            default:
+                return "Unknown";
+        }
     }
 }

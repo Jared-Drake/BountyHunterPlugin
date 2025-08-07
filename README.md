@@ -1,106 +1,64 @@
-# BountyHunter Plugin
+# BountyHunter Plugin v2.0
 
-A Minecraft Bukkit/Spigot plugin that allows players to place bounties on other players. When a player with a bounty is killed, the killer receives the bounty reward.
+A GUI-based bounty hunting plugin for Minecraft servers that uses diamonds, emeralds, and netherite ingots as currency.
 
 ## Features
 
-- Place bounties on other players
-- List all active bounties
-- Remove bounties (with refund)
-- Automatic bounty claiming when targets are killed
-- Economy integration with Vault
-- Configurable messages and settings
-
-## Requirements
-
-- Minecraft Server (Bukkit/Spigot/Paper) 1.20+
-- Java 17 or higher
-- Vault plugin
-- An economy plugin (like EssentialsX, iConomy, etc.)
-
-## Installation
-
-1. **Install Maven** (if not already installed):
-   - Download from: https://maven.apache.org/download.cgi
-   - Extract to a directory
-   - Add Maven's bin directory to your system PATH
-
-2. **Build the plugin**:
-   ```bash
-   mvn clean package
-   ```
-
-3. **Install on your server**:
-   - Copy the generated JAR file from `target/` to your server's `plugins/` folder
-   - Restart your server
-
-4. **Install dependencies**:
-   - Install Vault plugin
-   - Install an economy plugin (EssentialsX recommended)
+- **GUI Interface**: Easy-to-use graphical interface for managing bounties
+- **Multiple Currencies**: Support for diamonds, emeralds, and netherite ingots
+- **Real-time Updates**: Bounties are automatically claimed when players are killed
+- **Inventory Integration**: Currency is taken from and given to player inventories
 
 ## Commands
 
-- `/bounty set <player> <amount>` - Place a bounty on a player
+- `/bounty gui` - Opens the main bounty GUI menu
+- `/bounty set <player> <currency> <amount>` - Set a bounty via command
 - `/bounty list` - List all active bounties
-- `/bounty remove <player>` - Remove a bounty (refunds the money)
-- `/bh` or `/bounties` - Aliases for the bounty command
+- `/bounty remove <player>` - Remove a bounty you placed
+
+## GUI Usage
+
+1. **Main Menu**: Use `/bounty gui` to open the main menu
+2. **Set Bounty**: Click "Set Bounty" and type the player name
+3. **Select Currency**: Choose between diamonds, emeralds, or netherite ingots
+4. **Choose Amount**: Select 1-9 of the chosen currency
+5. **View Bounties**: Click "View Active Bounties" to see all current bounties
+
+## Currency Types
+
+- **Diamonds**: Blue currency option (1-9 diamonds)
+- **Emeralds**: Green currency option (1-9 emeralds)  
+- **Netherite Ingots**: Purple currency option (1-9 netherite ingots)
+
+## How It Works
+
+1. **Setting Bounties**: Players must have the required currency in their inventory
+2. **Currency Removal**: The specified amount is removed from the player's inventory
+3. **Bounty Storage**: Bounties are stored in memory (not persistent across server restarts)
+4. **Claiming Bounties**: When a player with a bounty is killed, the killer receives the currency
+5. **Bounty Removal**: Only the player who placed the bounty can remove it
+
+## Installation
+
+1. Download the plugin JAR file
+2. Place it in your server's `plugins` folder
+3. Restart your server
+4. The plugin will be ready to use!
 
 ## Permissions
 
-Currently, no permissions are required. All players can use the bounty system.
+No special permissions are required. All players can use the bounty system.
 
 ## Configuration
 
-The plugin creates a `config.yml` file in the plugin folder with customizable settings:
+The plugin uses default settings and doesn't require configuration files.
 
-- `minimum-bounty`: Minimum amount for bounties (default: 1.0)
-- `maximum-bounty`: Maximum amount for bounties (default: -1, no limit)
-- `messages`: Customizable messages for all plugin interactions
+## Dependencies
 
-## How it Works
+- Spigot/Paper 1.20+
+- No external dependencies required
 
-1. **Setting a Bounty**: Players can place bounties on other players using `/bounty set <player> <amount>`. The money is withdrawn from their account immediately.
+## Version History
 
-2. **Bounty List**: Players can view all active bounties using `/bounty list`.
-
-3. **Bounty Removal**: Players can remove bounties using `/bounty remove <player>`, which refunds the money.
-
-4. **Bounty Claiming**: When a player with a bounty is killed by another player, the killer automatically receives the bounty reward.
-
-5. **Bounty Loss**: If a player with a bounty dies from environmental damage (falling, drowning, etc.) or commits suicide, the bounty is lost.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Vault with an economy plugin not found"**
-   - Make sure Vault is installed
-   - Make sure an economy plugin is installed and configured
-
-2. **Plugin won't load**
-   - Check that you're using Java 17 or higher
-   - Check that your server supports the API version (1.20)
-
-3. **Commands not working**
-   - Make sure the plugin is properly loaded
-   - Check server logs for any error messages
-
-### Building Issues
-
-If you encounter Maven build issues:
-
-1. Make sure Maven is properly installed and in your PATH
-2. Try running `mvn clean` first, then `mvn compile`
-3. Check that you have Java 17+ installed
-
-## Development
-
-This plugin is built with:
-- Java 17
-- Maven
-- Spigot API 1.20.1
-- Vault API
-
-## License
-
-This project is open source. Feel free to modify and distribute as needed. 
+- **v2.0**: Complete rewrite with GUI interface and custom currency system
+- **v1.0**: Original version with economy plugin integration 

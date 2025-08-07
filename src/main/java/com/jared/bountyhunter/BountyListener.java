@@ -17,40 +17,44 @@ public class BountyListener implements Listener {
         Player killer = victim.getKiller();
 
         // Check if victim has a bounty
-        if (!BountyCommand.bounties.containsKey(victim.getUniqueId())) {
+        if (!BountyManager.hasBounty(victim.getUniqueId())) {
             return; // No bounty, nothing to do
         }
 
         // If there's no killer (environmental death), remove the bounty
         if (killer == null) {
-            double lostBounty = BountyCommand.bounties.remove(victim.getUniqueId());
+            BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
+            BountyManager.removeBounty(victim.getUniqueId());
+            String currencyName = getCurrencyName(bounty.getCurrency());
             Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + " died without a killer! " +
-                "Bounty of $" + String.format("%.2f", lostBounty) + " has been lost!");
+                "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been lost!");
             return;
         }
 
         // Check if killer is the same as victim (suicide)
         if (killer.equals(victim)) {
-            double lostBounty = BountyCommand.bounties.remove(victim.getUniqueId());
+            BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
+            BountyManager.removeBounty(victim.getUniqueId());
+            String currencyName = getCurrencyName(bounty.getCurrency());
             Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + " committed suicide! " +
-                "Bounty of $" + String.format("%.2f", lostBounty) + " has been lost!");
+                "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been lost!");
             return;
         }
 
         // Award the bounty to the killer
-        double reward = BountyCommand.bounties.remove(victim.getUniqueId());
-        
-        try {
-            BountyHunter.getEconomy().depositPlayer(killer, reward);
-            killer.sendMessage(ChatColor.GREEN + "You claimed a bounty of $" + 
-                String.format("%.2f", reward) + " for killing " + victim.getName() + "!");
-            Bukkit.broadcastMessage(ChatColor.AQUA + killer.getName() + " claimed the bounty on " + 
-                victim.getName() + " for $" + String.format("%.2f", reward) + "!");
-        } catch (Exception e) {
-            // If economy plugin fails, still remove the bounty but log the error
-            Bukkit.getLogger().warning("Failed to deposit bounty reward to " + killer.getName() + 
-                " for killing " + victim.getName() + ". Error: " + e.getMessage());
-            killer.sendMessage(ChatColor.RED + "Error claiming bounty reward. Contact an administrator.");
+        BountyManager.claimBounty(killer, victim);
+    }
+    
+    private String getCurrencyName(BountyData.CurrencyType currency) {
+        switch (currency) {
+            case DIAMOND:
+                return "Diamond";
+            case EMERALD:
+                return "Emerald";
+            case NETHERITE:
+                return "Netherite Ingot";
+            default:
+                return "Unknown";
         }
     }
 }
