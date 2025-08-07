@@ -1,0 +1,11 @@
+name: BountyHunter
+version: 1.0
+main: com.jared.bountyhunter.BountyHunter
+api-version: 1.20
+description: A bounty hunting plugin for Minecraft servers
+
+commands:
+  bounty:
+    description: Place, list, or remove bounties on players
+    usage: /bounty <set|list|remove> [player] [amount]
+    aliases: [bh, bounties]

@@ -1,0 +1,28 @@
+# BountyHunter Configuration
+
+# Minimum bounty amount
+minimum-bounty: 1.0
+
+# Maximum bounty amount (set to -1 for no limit)
+maximum-bounty: -1
+
+# Messages
+messages:
+  bounty-set: "&aBounty of $%amount% placed on %target%!"
+  bounty-broadcast: "&6%player% placed a bounty of $%amount% on %target%!"
+  bounty-claimed: "&aYou claimed a bounty of $%amount% for killing %victim%!"
+  bounty-broadcast-claimed: "&b%killer% claimed the bounty on %victim% for $%amount%!"
+  bounty-lost: "&c%player% died without a killer! Bounty of $%amount% has been lost!"
+  bounty-suicide: "&c%player% committed suicide! Bounty of $%amount% has been lost!"
+  no-bounties: "&eNo active bounties."
+  bounty-list-header: "&e=== Active Bounties ==="
+  bounty-list-entry: "&7- %player%: $%amount%"
+  insufficient-funds: "&cYou don't have enough money! You have: $%balance%"
+  player-not-found: "&cPlayer not found: %player%"
+  cannot-bounty-self: "&cYou cannot set a bounty on yourself."
+  bounty-already-exists: "&cA bounty already exists on %player%!"
+  no-bounty-exists: "&cNo bounty exists on %player%."
+  bounty-removed: "&aBounty of $%amount% removed from %player% and refunded to you!"
+  invalid-amount: "&cInvalid amount: %amount%"
+  amount-too-low: "&cMinimum bounty amount is $1.00"
+  amount-must-be-positive: "&cAmount must be positive." 
