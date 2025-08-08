@@ -19,10 +19,11 @@ A GUI-based bounty hunting plugin for Minecraft servers that uses diamonds, emer
 ## GUI Usage
 
 1. **Main Menu**: Use `/bounty gui` to open the main menu
-2. **Set Bounty**: Click "Set Bounty" and type the player name
-3. **Select Currency**: Choose between diamonds, emeralds, or netherite ingots
-4. **Choose Amount**: Select 1-9 of the chosen currency
-5. **View Bounties**: Click "View Active Bounties" to see all current bounties
+2. **Set Bounty**: Click "Set Bounty" to open the player selection menu
+3. **Select Player**: Click on a player's head to select them as your target
+4. **Select Currency**: Choose between diamonds, emeralds, or netherite ingots
+5. **Choose Amount**: Select 1-9 of the chosen currency
+6. **View Bounties**: Click "View Active Bounties" to see all current bounties
 
 ## Currency Types
 

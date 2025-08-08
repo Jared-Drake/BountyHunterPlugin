@@ -51,38 +51,60 @@ public class BountyGUI {
             ChatColor.GRAY + "Select currency and amount below");
         inv.setItem(4, targetHead);
         
-        // Diamond options
-        for (int i = 0; i < 9; i++) {
-            int amount = i + 1;
-            ItemStack diamondItem = createGuiItem(DIAMOND_ICON, 
-                ChatColor.AQUA + String.valueOf(amount) + " Diamond" + (amount > 1 ? "s" : ""),
-                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " diamond" + (amount > 1 ? "s" : ""));
-            inv.setItem(18 + i, diamondItem);
-        }
+        // Currency type selection at the top
+        ItemStack diamondCurrency = createGuiItem(DIAMOND_ICON, 
+            ChatColor.AQUA + "Diamonds",
+            ChatColor.GRAY + "Click to select diamond amounts");
+        inv.setItem(18, diamondCurrency);
         
-        // Emerald options
-        for (int i = 0; i < 9; i++) {
-            int amount = i + 1;
-            ItemStack emeraldItem = createGuiItem(EMERALD_ICON, 
-                ChatColor.GREEN + String.valueOf(amount) + " Emerald" + (amount > 1 ? "s" : ""),
-                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " emerald" + (amount > 1 ? "s" : ""));
-            inv.setItem(27 + i, emeraldItem);
-        }
+        ItemStack emeraldCurrency = createGuiItem(EMERALD_ICON, 
+            ChatColor.GREEN + "Emeralds",
+            ChatColor.GRAY + "Click to select emerald amounts");
+        inv.setItem(19, emeraldCurrency);
         
-        // Netherite options
-        for (int i = 0; i < 9; i++) {
-            int amount = i + 1;
-            ItemStack netheriteItem = createGuiItem(NETHERITE_ICON, 
-                ChatColor.DARK_PURPLE + String.valueOf(amount) + " Netherite Ingot" + (amount > 1 ? "s" : ""),
-                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " netherite ingot" + (amount > 1 ? "s" : ""));
-            inv.setItem(36 + i, netheriteItem);
-        }
+        ItemStack netheriteCurrency = createGuiItem(NETHERITE_ICON, 
+            ChatColor.DARK_PURPLE + "Netherite Ingots",
+            ChatColor.GRAY + "Click to select netherite amounts");
+        inv.setItem(20, netheriteCurrency);
         
         // Cancel button
         ItemStack cancelItem = createGuiItem(Material.BARRIER, 
             ChatColor.RED + "Cancel", 
             ChatColor.GRAY + "Click to go back");
-        inv.setItem(49, cancelItem);
+        inv.setItem(26, cancelItem);
+        
+        player.openInventory(inv);
+    }
+    
+    public static void openCurrencyAmountMenu(Player player, Player target, BountyData.CurrencyType currency) {
+        String currencyName = getCurrencyName(currency);
+        Material currencyMaterial = getCurrencyMaterial(currency);
+        ChatColor currencyColor = getCurrencyColor(currency);
+        
+        Inventory inv = Bukkit.createInventory(null, 54, currencyColor + "Select " + currencyName + " Amount");
+        
+        // Target info at top
+        ItemStack targetInfo = createGuiItem(Material.PLAYER_HEAD, (byte) 0,
+            ChatColor.RED + "Target: " + target.getName(),
+            ChatColor.GRAY + "Currency: " + currencyName);
+        inv.setItem(4, targetInfo);
+        
+        // Amount options (1-64)
+        for (int i = 0; i < 54; i++) {
+            int amount = i + 1;
+            if (amount > 64) break;
+            
+            ItemStack amountItem = createGuiItem(currencyMaterial, 
+                currencyColor + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""),
+                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""));
+            inv.setItem(i, amountItem);
+        }
+        
+        // Back button
+        ItemStack backItem = createGuiItem(Material.ARROW, 
+            ChatColor.YELLOW + "Back", 
+            ChatColor.GRAY + "Click to go back");
+        inv.setItem(53, backItem);
         
         player.openInventory(inv);
     }
@@ -107,6 +129,54 @@ public class BountyGUI {
                 inv.setItem(slot, bountyItem);
                 slot++;
             }
+        }
+        
+        player.openInventory(inv);
+    }
+    
+    public static void openPlayerSelectionMenu(Player player) {
+        // Get all online players except the current player
+        List<Player> onlinePlayers = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!p.equals(player)) {
+                onlinePlayers.add(p);
+            }
+        }
+        
+        if (onlinePlayers.isEmpty()) {
+            player.sendMessage(ChatColor.RED + "No other players are online!");
+            return;
+        }
+        
+        // Calculate inventory size based on number of players
+        int playerCount = onlinePlayers.size();
+        int rows = (playerCount - 1) / 9 + 1;
+        int size = Math.min(54, rows * 9); // Max 6 rows (54 slots)
+        
+        Inventory inv = Bukkit.createInventory(null, size, ChatColor.DARK_BLUE + "Select Target Player");
+        
+        int slot = 0;
+        for (Player target : onlinePlayers) {
+            if (slot >= size) break; // Safety check
+            
+            // Check if player already has a bounty
+            boolean hasBounty = BountyManager.hasBounty(target.getUniqueId());
+            
+            ItemStack playerHead = createGuiItem(Material.PLAYER_HEAD, (byte) 0,
+                ChatColor.GREEN + target.getName(),
+                ChatColor.GRAY + "Click to place bounty on " + target.getName(),
+                hasBounty ? ChatColor.RED + "Already has a bounty!" : ChatColor.YELLOW + "Available for bounty");
+            
+            inv.setItem(slot, playerHead);
+            slot++;
+        }
+        
+        // Add cancel button at the bottom
+        if (size >= 9) {
+            ItemStack cancelItem = createGuiItem(Material.BARRIER,
+                ChatColor.RED + "Cancel",
+                ChatColor.GRAY + "Click to go back");
+            inv.setItem(size - 1, cancelItem);
         }
         
         player.openInventory(inv);
@@ -158,5 +228,44 @@ public class BountyGUI {
         
         item.setItemMeta(meta);
         return item;
+    }
+    
+    private static String getCurrencyName(BountyData.CurrencyType currency) {
+        switch (currency) {
+            case DIAMOND:
+                return "Diamond";
+            case EMERALD:
+                return "Emerald";
+            case NETHERITE:
+                return "Netherite Ingot";
+            default:
+                return "Unknown";
+        }
+    }
+    
+    private static Material getCurrencyMaterial(BountyData.CurrencyType currency) {
+        switch (currency) {
+            case DIAMOND:
+                return Material.DIAMOND;
+            case EMERALD:
+                return Material.EMERALD;
+            case NETHERITE:
+                return Material.NETHERITE_INGOT;
+            default:
+                return Material.PAPER;
+        }
+    }
+    
+    private static ChatColor getCurrencyColor(BountyData.CurrencyType currency) {
+        switch (currency) {
+            case DIAMOND:
+                return ChatColor.AQUA;
+            case EMERALD:
+                return ChatColor.GREEN;
+            case NETHERITE:
+                return ChatColor.DARK_PURPLE;
+            default:
+                return ChatColor.WHITE;
+        }
     }
 }
