@@ -85,6 +85,13 @@ bounties:
 - Spigot/Paper 1.20+
 - No external dependencies required
 
+## Future Features in the works
+
+ - Trackers compass for bounty hunters
+ - Clues for hunters
+ - Bounty Hunter leveling system
+ - Bounty hunter contracts
+
 ## Version History
 
 - **v2.0**: Complete rewrite with GUI interface, custom currency system, and persistent data storage
