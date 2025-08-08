@@ -20,7 +20,7 @@ public class BountyCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove> [player] [currency] [amount]");
+            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status> [player] [currency] [amount]");
             return true;
         }
 
@@ -34,8 +34,14 @@ public class BountyCommand implements CommandExecutor {
                 return handleListBounties(player);
             case "remove":
                 return handleRemoveBounty(player, args);
+            case "accept":
+                return handleAcceptBounty(player, args);
+            case "abandon":
+                return handleAbandonBounty(player);
+            case "status":
+                return handleStatusCommand(player);
             default:
-                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, or remove");
+                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, or status");
                 return true;
         }
     }
@@ -107,9 +113,12 @@ public class BountyCommand implements CommandExecutor {
             if (targetPlayer != null) {
                 BountyData bounty = bounties.get(uuid);
                 String currencyName = getCurrencyName(bounty.getCurrency());
+                String status = bounty.isAccepted() ? 
+                    ChatColor.RED + " [ACCEPTED by " + bounty.getHunterName() + "]" : 
+                    ChatColor.GREEN + " [AVAILABLE]";
                 player.sendMessage(ChatColor.GRAY + "- " + targetPlayer.getName() + 
                     ": " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") +
-                    " (set by " + bounty.getPlacedBy() + ")");
+                    " (set by " + bounty.getPlacedBy() + ")" + status);
             }
         }
         return true;
@@ -141,6 +150,100 @@ public class BountyCommand implements CommandExecutor {
         } else {
             player.sendMessage(ChatColor.RED + "You can only remove bounties that you placed!");
         }
+        return true;
+    }
+    
+    private boolean handleAcceptBounty(Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.RED + "Usage: /bounty accept <player>");
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            player.sendMessage(ChatColor.RED + "Player not found: " + args[1]);
+            return true;
+        }
+
+        if (target == player) {
+            player.sendMessage(ChatColor.RED + "You cannot accept a bounty on yourself.");
+            return true;
+        }
+
+        if (!BountyManager.hasBounty(target.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "No bounty exists on " + target.getName() + ".");
+            return true;
+        }
+
+        BountyData bounty = BountyManager.getBounty(target.getUniqueId());
+        
+        if (bounty.isAccepted()) {
+            if (bounty.getHunterUUID().equals(player.getUniqueId())) {
+                player.sendMessage(ChatColor.YELLOW + "You have already accepted this bounty!");
+            } else {
+                player.sendMessage(ChatColor.RED + "This bounty has already been accepted by " + bounty.getHunterName() + "!");
+            }
+            return true;
+        }
+
+        // Check if the player who placed the bounty is trying to accept it
+        if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "You cannot accept a bounty that you placed!");
+            return true;
+        }
+
+        // Accept the bounty
+        BountyManager.acceptBounty(target.getUniqueId(), player);
+        return true;
+    }
+
+    private boolean handleAbandonBounty(Player player) {
+        // Find bounty that this player has accepted
+        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+        
+        if (acceptedBountyTarget == null) {
+            player.sendMessage(ChatColor.RED + "You haven't accepted any bounties.");
+            return true;
+        }
+
+        BountyManager.abandonBounty(acceptedBountyTarget, player);
+        return true;
+    }
+    
+    private boolean handleStatusCommand(Player player) {
+        PlayerModeManager.PlayerMode mode = PlayerModeManager.getPlayerMode(player);
+        
+        player.sendMessage(ChatColor.YELLOW + "=== Your Bounty Status ===");
+        player.sendMessage(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + mode.name());
+        
+        if (mode == PlayerModeManager.PlayerMode.BOUNTY_HUNTER) {
+            Player target = PlayerModeManager.getHunterTarget(player);
+            String targetName = target != null ? target.getName() : "Unknown";
+            player.sendMessage(ChatColor.GRAY + "Hunting: " + ChatColor.RED + targetName);
+        } else if (mode == PlayerModeManager.PlayerMode.TARGET) {
+            Player hunter = PlayerModeManager.getTargetHunter(player);
+            String hunterName = hunter != null ? hunter.getName() : "Unknown";
+            player.sendMessage(ChatColor.GRAY + "Being hunted by: " + ChatColor.RED + hunterName);
+        }
+        
+        // Show if player has a bounty on them
+        if (BountyManager.hasBounty(player.getUniqueId())) {
+            BountyData bounty = BountyManager.getBounty(player.getUniqueId());
+            String currencyName = getCurrencyName(bounty.getCurrency());
+            player.sendMessage(ChatColor.GRAY + "Bounty on you: " + ChatColor.GOLD + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
+        }
+        
+        // Show if player has accepted a bounty
+        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+        if (acceptedBountyTarget != null) {
+            Player target = Bukkit.getPlayer(acceptedBountyTarget);
+            String targetName = target != null ? target.getName() : "Unknown";
+            BountyData bounty = BountyManager.getBounty(acceptedBountyTarget);
+            String currencyName = getCurrencyName(bounty.getCurrency());
+            player.sendMessage(ChatColor.GRAY + "Accepted bounty on: " + ChatColor.GOLD + targetName + 
+                " (" + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + ")");
+        }
+        
         return true;
     }
     

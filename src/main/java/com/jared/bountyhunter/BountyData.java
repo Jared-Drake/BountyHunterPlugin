@@ -8,6 +8,9 @@ public class BountyData {
     private String placedByName;
     private CurrencyType currency;
     private int amount;
+    private UUID hunterUUID;
+    private String hunterName;
+    private boolean isAccepted;
     
     public enum CurrencyType {
         DIAMOND,
@@ -21,6 +24,9 @@ public class BountyData {
         this.placedByName = placedByName;
         this.currency = currency;
         this.amount = amount;
+        this.hunterUUID = null;
+        this.hunterName = null;
+        this.isAccepted = false;
     }
     
     public UUID getTargetUUID() {
@@ -41,5 +47,29 @@ public class BountyData {
     
     public int getAmount() {
         return amount;
+    }
+    
+    public UUID getHunterUUID() {
+        return hunterUUID;
+    }
+    
+    public String getHunterName() {
+        return hunterName;
+    }
+    
+    public boolean isAccepted() {
+        return isAccepted;
+    }
+    
+    public void setHunter(UUID hunterUUID, String hunterName) {
+        this.hunterUUID = hunterUUID;
+        this.hunterName = hunterName;
+        this.isAccepted = true;
+    }
+    
+    public void clearHunter() {
+        this.hunterUUID = null;
+        this.hunterName = null;
+        this.isAccepted = false;
     }
 }

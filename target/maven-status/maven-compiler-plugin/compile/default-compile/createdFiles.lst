@@ -3,6 +3,7 @@ com\jared\bountyhunter\BountyManager$1.class
 com\jared\bountyhunter\BountyGUIListener.class
 com\jared\bountyhunter\BountyListener$1.class
 com\jared\bountyhunter\BountyTargetTracker.class
+com\jared\bountyhunter\BountyDataManager.class
 com\jared\bountyhunter\BountyGUI$1.class
 com\jared\bountyhunter\BountyCommand.class
 com\jared\bountyhunter\BountyManager.class

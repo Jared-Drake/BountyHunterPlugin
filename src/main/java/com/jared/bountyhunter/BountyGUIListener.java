@@ -10,6 +10,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.UUID;
+
 public class BountyGUIListener implements Listener {
     
     @EventHandler
@@ -46,15 +48,28 @@ public class BountyGUIListener implements Listener {
             event.setCancelled(true);
             handlePlayerSelectionMenuClick(player, event.getSlot(), event.getInventory());
         }
+        // Handle my bounties menu
+        else if (title.equals(BountyGUI.MY_BOUNTIES_TITLE)) {
+            event.setCancelled(true);
+            handleMyBountiesMenuClick(player, event.getSlot());
+        }
+        // Handle bounty confirmation menu
+        else if (title.equals(BountyGUI.BOUNTY_CONFIRM_TITLE)) {
+            event.setCancelled(true);
+            handleBountyConfirmMenuClick(player, event.getSlot(), event.getInventory());
+        }
     }
     
     private void handleMainMenuClick(Player player, int slot) {
         switch (slot) {
-            case 11: // Set Bounty
+            case 10: // Set Bounty
                 openPlayerSelectionMenu(player);
                 break;
-            case 15: // View Bounties
+            case 13: // View Bounties
                 BountyGUI.openBountyListMenu(player);
+                break;
+            case 16: // My Accepted Bounties
+                BountyGUI.openMyBountiesMenu(player);
                 break;
         }
     }
@@ -89,9 +104,57 @@ public class BountyGUIListener implements Listener {
     }
     
     private void handleBountyListMenuClick(Player player, int slot) {
-        // This could be used for claiming bounties or getting more info
-        // For now, just close the inventory
+        // Get the bounty from the clicked slot
+        Inventory inventory = player.getOpenInventory().getTopInventory();
+        ItemStack clickedItem = inventory.getItem(slot);
+        
+        if (clickedItem == null) {
+            return;
+        }
+        
+        // Extract target name from the item display name
+        String displayName = clickedItem.getItemMeta().getDisplayName();
+        String targetName = ChatColor.stripColor(displayName).replace("Bounty on ", "");
+        
+        Player target = Bukkit.getPlayer(targetName);
+        if (target == null) {
+            player.sendMessage(ChatColor.RED + "Target player is no longer online!");
+            player.closeInventory();
+            return;
+        }
+        
+        BountyData bounty = BountyManager.getBounty(target.getUniqueId());
+        if (bounty == null) {
+            player.sendMessage(ChatColor.RED + "Bounty no longer exists!");
+            player.closeInventory();
+            return;
+        }
+        
+        // Check if bounty is already accepted
+        if (bounty.isAccepted()) {
+            if (bounty.getHunterUUID().equals(player.getUniqueId())) {
+                player.sendMessage(ChatColor.YELLOW + "You have already accepted this bounty!");
+            } else {
+                player.sendMessage(ChatColor.RED + "This bounty has already been accepted by " + bounty.getHunterName() + "!");
+            }
+            return;
+        }
+        
+        // Check if player placed this bounty
+        if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "You cannot accept a bounty that you placed!");
+            return;
+        }
+        
+        // Check if player is the target
+        if (target.equals(player)) {
+            player.sendMessage(ChatColor.RED + "You cannot accept a bounty on yourself!");
+            return;
+        }
+        
+        // Open confirmation menu
         player.closeInventory();
+        BountyGUI.openBountyConfirmMenu(player, target, "accept");
     }
     
     private void openPlayerSelectionMenu(Player player) {
@@ -197,5 +260,80 @@ public class BountyGUIListener implements Listener {
         setBounty(player, target, currency, amount);
         player.closeInventory();
         BountyTargetTracker.clearTarget(player);
+    }
+    
+    private void handleMyBountiesMenuClick(Player player, int slot) {
+        switch (slot) {
+            case 22: // Abandon bounty
+                UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+                if (acceptedBountyTarget != null) {
+                    Player target = Bukkit.getPlayer(acceptedBountyTarget);
+                    if (target != null) {
+                        player.closeInventory();
+                        BountyGUI.openBountyConfirmMenu(player, target, "abandon");
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Target is no longer online!");
+                        player.closeInventory();
+                    }
+                }
+                break;
+            case 4: // Track target (compass functionality)
+                UUID targetUUID = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+                if (targetUUID != null) {
+                    Player target = Bukkit.getPlayer(targetUUID);
+                    if (target != null && target.isOnline()) {
+                        player.setCompassTarget(target.getLocation());
+                        player.sendMessage(ChatColor.GREEN + "Compass now pointing to " + target.getName() + "!");
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Target is not online!");
+                    }
+                }
+                break;
+        }
+    }
+    
+    private void handleBountyConfirmMenuClick(Player player, int slot, Inventory inventory) {
+        switch (slot) {
+            case 11: // Confirm action
+                ItemStack confirmItem = inventory.getItem(slot);
+                if (confirmItem != null) {
+                    String itemName = confirmItem.getItemMeta().getDisplayName();
+                    
+                    if (itemName.contains("Confirm Accept")) {
+                        // Get target from the center item
+                        ItemStack targetItem = inventory.getItem(13);
+                        if (targetItem != null) {
+                            String displayName = targetItem.getItemMeta().getDisplayName();
+                            String targetName = ChatColor.stripColor(displayName).replace("Bounty on ", "");
+                            
+                            Player target = Bukkit.getPlayer(targetName);
+                            if (target != null) {
+                                // Perform acceptance validation and action
+                                BountyData bounty = BountyManager.getBounty(target.getUniqueId());
+                                if (bounty != null && !bounty.isAccepted()) {
+                                    BountyManager.acceptBounty(target.getUniqueId(), player);
+                                } else {
+                                    player.sendMessage(ChatColor.RED + "This bounty is no longer available!");
+                                }
+                            } else {
+                                player.sendMessage(ChatColor.RED + "Target player is no longer online!");
+                            }
+                        }
+                    } else if (itemName.contains("Confirm Abandon")) {
+                        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+                        if (acceptedBountyTarget != null) {
+                            BountyManager.abandonBounty(acceptedBountyTarget, player);
+                        } else {
+                            player.sendMessage(ChatColor.RED + "You don't have any accepted bounties!");
+                        }
+                    }
+                }
+                player.closeInventory();
+                break;
+            case 15: // Cancel
+                player.closeInventory();
+                BountyGUI.openMainMenu(player);
+                break;
+        }
     }
 }
