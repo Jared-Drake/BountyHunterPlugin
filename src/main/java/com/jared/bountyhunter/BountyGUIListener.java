@@ -71,6 +71,9 @@ public class BountyGUIListener implements Listener {
             case 16: // My Accepted Bounties
                 BountyGUI.openMyBountiesMenu(player);
                 break;
+            case 22: // Player Status (just informational, no action needed)
+                // Could add a refresh or detailed status view here if needed
+                break;
         }
     }
     

@@ -26,7 +26,7 @@ public class BountyGUI {
     private static final Material NETHERITE_ICON = Material.NETHERITE_INGOT;
     
     public static void openMainMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, BOUNTY_MENU_TITLE);
+        Inventory inv = Bukkit.createInventory(null, 36, BOUNTY_MENU_TITLE);
         
         // Set bounty option
         ItemStack setBountyItem = createGuiItem(Material.PLAYER_HEAD, (byte) 0, 
@@ -39,7 +39,8 @@ public class BountyGUI {
         ItemStack viewBountiesItem = createGuiItem(Material.BOOK, 
             ChatColor.GOLD + "View Active Bounties", 
             ChatColor.GRAY + "Click to see all active bounties",
-            ChatColor.YELLOW + "Accept bounties to become a hunter!");
+            ChatColor.YELLOW + "Accept bounties to become a hunter!",
+            ChatColor.AQUA + "⚡ NEW: Targets can claim bounties by killing hunters!");
         inv.setItem(13, viewBountiesItem);
         
         // My accepted bounties option
@@ -51,6 +52,52 @@ public class BountyGUI {
                 ChatColor.GREEN + "You have an active hunt!" : 
                 ChatColor.YELLOW + "No active hunts");
         inv.setItem(16, myBountiesItem);
+        
+        // Player status option (NEW)
+        PlayerModeManager.PlayerMode mode = PlayerModeManager.getPlayerMode(player);
+        Material statusMaterial;
+        String statusTitle;
+        List<String> statusLore = new ArrayList<>();
+        
+        switch (mode) {
+            case BOUNTY_HUNTER:
+                statusMaterial = Material.IRON_SWORD;
+                statusTitle = ChatColor.RED + "⚔ Hunter Mode Active ⚔";
+                Player target = PlayerModeManager.getHunterTarget(player);
+                statusLore.add(ChatColor.GRAY + "You are hunting: " + (target != null ? target.getName() : "Unknown"));
+                statusLore.add(ChatColor.GREEN + "Effects: Speed I, Night Vision");
+                statusLore.add(ChatColor.YELLOW + "Kill your target to claim the bounty!");
+                statusLore.add(ChatColor.RED + "⚠ If they kill you, they get the reward!");
+                break;
+            case TARGET:
+                statusMaterial = Material.SHIELD;
+                statusTitle = ChatColor.YELLOW + "⚠ Target Mode Active ⚠";
+                Player hunter = PlayerModeManager.getTargetHunter(player);
+                statusLore.add(ChatColor.GRAY + "You are being hunted by: " + (hunter != null ? hunter.getName() : "Unknown"));
+                statusLore.add(ChatColor.GREEN + "Effects: Speed I");
+                statusLore.add(ChatColor.YELLOW + "Survive or fight back!");
+                statusLore.add(ChatColor.AQUA + "⚡ Kill your hunter to claim the bounty yourself!");
+                break;
+            default:
+                statusMaterial = Material.EMERALD;
+                statusTitle = ChatColor.GREEN + "Normal Mode";
+                statusLore.add(ChatColor.GRAY + "You are not in any special mode");
+                statusLore.add(ChatColor.YELLOW + "Accept a bounty to become a hunter!");
+                if (BountyManager.hasBounty(player.getUniqueId())) {
+                    BountyData bounty = BountyManager.getBounty(player.getUniqueId());
+                    statusLore.add("");
+                    statusLore.add(ChatColor.RED + "⚠ You have a bounty on you!");
+                    String currencyName = getCurrencyName(bounty.getCurrency());
+                    statusLore.add(ChatColor.GOLD + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
+                    if (bounty.isAccepted()) {
+                        statusLore.add(ChatColor.RED + "Hunter: " + bounty.getHunterName());
+                    }
+                }
+                break;
+        }
+        
+        ItemStack statusItem = createGuiItem(statusMaterial, statusTitle, statusLore.toArray(new String[0]));
+        inv.setItem(22, statusItem);
         
         player.openInventory(inv);
     }
@@ -225,13 +272,27 @@ public class BountyGUI {
         if (bounty.isAccepted()) {
             lore.add(ChatColor.RED + "Status: ACCEPTED");
             lore.add(ChatColor.RED + "Hunter: " + bounty.getHunterName());
+            
+            // Check if both players are online and in hunter/target mode
+            Player hunterPlayer = Bukkit.getPlayer(bounty.getHunterUUID());
+            if (hunterPlayer != null && target.isOnline()) {
+                if (PlayerModeManager.isHunter(hunterPlayer) && PlayerModeManager.isTarget(target)) {
+                    lore.add(ChatColor.DARK_RED + "⚔ ACTIVE HUNT IN PROGRESS ⚔");
+                    lore.add(ChatColor.GRAY + "Both players are online and in combat mode!");
+                } else {
+                    lore.add(ChatColor.YELLOW + "Hunt will activate when both players are online");
+                }
+            } else {
+                lore.add(ChatColor.GRAY + "Waiting for players to come online...");
+            }
             lore.add("");
             lore.add(ChatColor.GRAY + "This bounty has been claimed by another hunter");
         } else {
             lore.add(ChatColor.GREEN + "Status: AVAILABLE");
             lore.add("");
             lore.add(ChatColor.YELLOW + "Left-click to accept this bounty");
-            lore.add(ChatColor.GRAY + "Right-click for more options");
+            lore.add(ChatColor.AQUA + "⚡ NEW: If target kills you, they get the reward!");
+            lore.add(ChatColor.GRAY + "Risk vs Reward - hunt carefully...");
         }
         
         return createGuiItem(material, 
@@ -244,7 +305,7 @@ public class BountyGUI {
     }
     
     private static ItemStack createGuiItem(Material material, byte data, String name, String... lore) {
-        ItemStack item = new ItemStack(material, 1, data);
+        ItemStack item = new ItemStack(material, 1);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(name);
         
@@ -374,16 +435,35 @@ public class BountyGUI {
         Material material = getCurrencyMaterial(bounty.getCurrency());
         String currencyName = getCurrencyName(bounty.getCurrency());
         
+        List<String> lore = new ArrayList<>();
+        lore.add(ChatColor.GREEN + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
+        lore.add(ChatColor.GRAY + "Set by: " + bounty.getPlacedBy());
+        lore.add("");
+        lore.add(ChatColor.BLUE + "Status: You are the hunter");
+        
+        if (target.isOnline()) {
+            lore.add(ChatColor.GREEN + "Target is online");
+            
+            // Check if both players are in hunter/target mode
+            Player hunter = Bukkit.getPlayer(bounty.getHunterUUID());
+            if (hunter != null && PlayerModeManager.isHunter(hunter) && PlayerModeManager.isTarget(target)) {
+                lore.add(ChatColor.DARK_RED + "⚔ HUNTER MODE ACTIVE ⚔");
+                lore.add(ChatColor.GRAY + "You have speed & night vision!");
+                lore.add(ChatColor.GRAY + "Target has speed boost for escape!");
+            } else {
+                lore.add(ChatColor.YELLOW + "Hunter mode will activate soon...");
+            }
+        } else {
+            lore.add(ChatColor.RED + "Target is offline");
+            lore.add(ChatColor.GRAY + "Hunter mode inactive while offline");
+        }
+        
+        lore.add("");
+        lore.add(ChatColor.YELLOW + "Kill " + target.getName() + " to claim the reward!");
+        lore.add(ChatColor.RED + "⚠ Warning: If they kill you, they get the bounty!");
+        
         return createGuiItem(material,
             ChatColor.GOLD + "Hunting: " + target.getName(),
-            ChatColor.GREEN + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""),
-            ChatColor.GRAY + "Set by: " + bounty.getPlacedBy(),
-            "",
-            ChatColor.BLUE + "Status: You are the hunter",
-            target.isOnline() ? 
-                ChatColor.GREEN + "Target is online" : 
-                ChatColor.RED + "Target is offline",
-            "",
-            ChatColor.YELLOW + "Kill " + target.getName() + " to claim the reward!");
+            lore.toArray(new String[0]));
     }
 }
