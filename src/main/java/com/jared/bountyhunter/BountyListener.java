@@ -45,6 +45,23 @@ public class BountyListener implements Listener {
         BountyManager.claimBounty(killer, victim);
     }
     
+    @EventHandler
+    public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        
+        // Check if this player has a bounty
+        if (BountyManager.hasBounty(player.getUniqueId())) {
+            BountyData bounty = BountyManager.getBounty(player.getUniqueId());
+            String currencyName = getCurrencyName(bounty.getCurrency());
+            
+            // Notify the player and server about their bounty
+            player.sendMessage(ChatColor.RED + "⚠ WARNING: You have an active bounty of " + 
+                bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + 
+                " placed by " + bounty.getPlacedBy() + "!");
+            Bukkit.broadcastMessage(ChatColor.GOLD + player.getName() + " has joined with an active bounty!");
+        }
+    }
+    
     private String getCurrencyName(BountyData.CurrencyType currency) {
         switch (currency) {
             case DIAMOND:

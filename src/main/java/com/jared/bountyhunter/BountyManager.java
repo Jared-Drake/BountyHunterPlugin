@@ -12,6 +12,10 @@ import java.util.UUID;
 public class BountyManager {
     private static HashMap<UUID, BountyData> bounties = new HashMap<>();
     
+    public static void loadBountiesFromFile() {
+        bounties = BountyDataManager.loadBounties();
+    }
+    
     public static HashMap<UUID, BountyData> getBounties() {
         return bounties;
     }
@@ -39,6 +43,9 @@ public class BountyManager {
             placedBy.getName(), currency, amount);
         bounties.put(target.getUniqueId(), bounty);
         
+        // Save bounty to file
+        BountyDataManager.saveBounty(target.getUniqueId(), bounty);
+        
         // Notify players
         placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + amount + " " + getCurrencyName(currency) + 
             (amount > 1 ? "s" : "") + " placed on " + target.getName() + "!");
@@ -50,6 +57,7 @@ public class BountyManager {
     
     public static void removeBounty(UUID targetUUID) {
         bounties.remove(targetUUID);
+        BountyDataManager.removeBounty(targetUUID);
     }
     
     public static void claimBounty(Player killer, Player killed) {
@@ -72,6 +80,7 @@ public class BountyManager {
         
         // Remove bounty
         bounties.remove(killedUUID);
+        BountyDataManager.removeBounty(killedUUID);
     }
     
     private static boolean hasEnoughCurrency(Player player, BountyData.CurrencyType currency, int amount) {
