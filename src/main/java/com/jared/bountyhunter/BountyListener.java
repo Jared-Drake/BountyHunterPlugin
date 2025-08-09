@@ -64,6 +64,9 @@ public class BountyListener implements Listener {
     public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
         Player player = event.getPlayer();
         
+        // Record this player in our player data system
+        PlayerDataManager.recordPlayer(player);
+        
         // Check if this player has a bounty
         if (BountyManager.hasBounty(player.getUniqueId())) {
             BountyData bounty = BountyManager.getBounty(player.getUniqueId());

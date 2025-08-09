@@ -10,6 +10,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 public class BountyGUIListener implements Listener {
@@ -28,25 +29,25 @@ public class BountyGUIListener implements Listener {
             event.setCancelled(true);
             handleMainMenuClick(player, event.getSlot());
         }
-        // Handle set bounty menu
+        // Handle set bounty menu (online and offline)
         else if (title.startsWith(BountyGUI.SET_BOUNTY_TITLE)) {
             event.setCancelled(true);
             handleSetBountyMenuClick(player, event.getSlot(), title);
         }
-        // Handle currency amount selection menu
+        // Handle currency amount selection menu (online and offline)
         else if (title.contains("Select") && title.contains("Amount")) {
             event.setCancelled(true);
             handleCurrencyAmountMenuClick(player, event.getSlot(), title);
         }
-        // Handle bounty list menu
-        else if (title.equals(BountyGUI.VIEW_BOUNTIES_TITLE)) {
+        // Handle bounty list menu (with pagination)
+        else if (title.startsWith(BountyGUI.VIEW_BOUNTIES_TITLE)) {
             event.setCancelled(true);
-            handleBountyListMenuClick(player, event.getSlot());
+            handleBountyListMenuClick(player, event.getSlot(), event.getInventory(), title);
         }
-        // Handle player selection menu
-        else if (title.equals(ChatColor.DARK_BLUE + "Select Target Player")) {
+        // Handle player selection menu (with pagination)
+        else if (title.startsWith(ChatColor.DARK_BLUE + "Select Target Player")) {
             event.setCancelled(true);
-            handlePlayerSelectionMenuClick(player, event.getSlot(), event.getInventory());
+            handlePlayerSelectionMenuClick(player, event.getSlot(), event.getInventory(), title);
         }
         // Handle my bounties menu
         else if (title.equals(BountyGUI.MY_BOUNTIES_TITLE)) {
@@ -78,15 +79,10 @@ public class BountyGUIListener implements Listener {
     }
     
     private void handleSetBountyMenuClick(Player player, int slot, String title) {
-        // Extract target player name from title
-        String targetName = title.substring(BountyGUI.SET_BOUNTY_TITLE.length() + 3); // Remove " - " prefix
-        Player target = Bukkit.getPlayer(targetName);
-        
-        if (target == null) {
-            player.sendMessage(ChatColor.RED + "Target player is no longer online!");
-            player.closeInventory();
-            return;
-        }
+        // Extract target player name from title (handle both online and offline formats)
+        String fullTargetInfo = title.substring(BountyGUI.SET_BOUNTY_TITLE.length() + 3); // Remove " - " prefix
+        String targetName = fullTargetInfo.replace(" (Offline)", "");
+        boolean isOffline = fullTargetInfo.contains("(Offline)");
         
         if (slot == 26) { // Cancel button
             player.closeInventory();
@@ -94,23 +90,59 @@ public class BountyGUIListener implements Listener {
         }
         
         // Handle currency type selection
+        BountyData.CurrencyType selectedCurrency = null;
         if (slot == 18) { // Diamonds
-            player.closeInventory();
-            BountyGUI.openCurrencyAmountMenu(player, target, BountyData.CurrencyType.DIAMOND);
+            selectedCurrency = BountyData.CurrencyType.DIAMOND;
         } else if (slot == 19) { // Emeralds
-            player.closeInventory();
-            BountyGUI.openCurrencyAmountMenu(player, target, BountyData.CurrencyType.EMERALD);
+            selectedCurrency = BountyData.CurrencyType.EMERALD;
         } else if (slot == 20) { // Netherite
+            selectedCurrency = BountyData.CurrencyType.NETHERITE;
+        }
+        
+        if (selectedCurrency != null) {
             player.closeInventory();
-            BountyGUI.openCurrencyAmountMenu(player, target, BountyData.CurrencyType.NETHERITE);
+            
+            if (isOffline) {
+                // Handle offline player currency selection
+                BountyGUI.openOfflineCurrencyAmountMenu(player, targetName, selectedCurrency);
+            } else {
+                // Handle online player currency selection
+                Player target = Bukkit.getPlayer(targetName);
+                if (target != null) {
+                    BountyGUI.openCurrencyAmountMenu(player, target, selectedCurrency);
+                } else {
+                    player.sendMessage(ChatColor.RED + "Target player is no longer online!");
+                }
+            }
         }
     }
     
-    private void handleBountyListMenuClick(Player player, int slot) {
-        // Get the bounty from the clicked slot
-        Inventory inventory = player.getOpenInventory().getTopInventory();
-        ItemStack clickedItem = inventory.getItem(slot);
+    private void handleBountyListMenuClick(Player player, int slot, Inventory inventory, String title) {
+        // Handle navigation buttons
+        if (slot == 45) { // Previous page
+            int currentPage = extractPageFromTitle(title);
+            if (currentPage > 1) {
+                player.closeInventory();
+                BountyGUI.openBountyListMenu(player, currentPage - 1);
+            }
+            return;
+        }
         
+        if (slot == 53) { // Next page
+            int currentPage = extractPageFromTitle(title);
+            player.closeInventory();
+            BountyGUI.openBountyListMenu(player, currentPage + 1);
+            return;
+        }
+        
+        if (slot == 49) { // Back to main menu
+            player.closeInventory();
+            BountyGUI.openMainMenu(player);
+            return;
+        }
+        
+        // Handle bounty selection
+        ItemStack clickedItem = inventory.getItem(slot);
         if (clickedItem == null) {
             return;
         }
@@ -119,14 +151,15 @@ public class BountyGUIListener implements Listener {
         String displayName = clickedItem.getItemMeta().getDisplayName();
         String targetName = ChatColor.stripColor(displayName).replace("Bounty on ", "");
         
-        Player target = Bukkit.getPlayer(targetName);
-        if (target == null) {
-            player.sendMessage(ChatColor.RED + "Target player is no longer online!");
+        // Find target UUID (could be offline player)
+        UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
+        if (targetUUID == null) {
+            player.sendMessage(ChatColor.RED + "Target player not found!");
             player.closeInventory();
             return;
         }
         
-        BountyData bounty = BountyManager.getBounty(target.getUniqueId());
+        BountyData bounty = BountyManager.getBounty(targetUUID);
         if (bounty == null) {
             player.sendMessage(ChatColor.RED + "Bounty no longer exists!");
             player.closeInventory();
@@ -150,14 +183,20 @@ public class BountyGUIListener implements Listener {
         }
         
         // Check if player is the target
-        if (target.equals(player)) {
+        if (targetUUID.equals(player.getUniqueId())) {
             player.sendMessage(ChatColor.RED + "You cannot accept a bounty on yourself!");
             return;
         }
         
-        // Open confirmation menu
+        // Open confirmation menu (create a fake Player object for offline players)
         player.closeInventory();
-        BountyGUI.openBountyConfirmMenu(player, target, "accept");
+        Player targetPlayer = Bukkit.getPlayer(targetUUID);
+        if (targetPlayer != null) {
+            BountyGUI.openBountyConfirmMenu(player, targetPlayer, "accept");
+        } else {
+            // Handle offline player acceptance directly
+            BountyManager.acceptBounty(targetUUID, player);
+        }
     }
     
     private void openPlayerSelectionMenu(Player player) {
@@ -178,16 +217,33 @@ public class BountyGUIListener implements Listener {
         BountyManager.setBounty(target, player, currency, amount);
     }
     
-    private void handlePlayerSelectionMenuClick(Player player, int slot, Inventory inventory) {
-        // Check if it's the cancel button (last slot)
-        if (slot == inventory.getSize() - 1) {
+    private void handlePlayerSelectionMenuClick(Player player, int slot, Inventory inventory, String title) {
+        // Handle navigation buttons
+        if (slot == 45) { // Previous page
+            int currentPage = extractPageFromTitle(title);
+            if (currentPage > 1) {
+                player.closeInventory();
+                BountyGUI.openPlayerSelectionMenu(player, currentPage - 1);
+            }
+            return;
+        }
+        
+        if (slot == 53) { // Next page
+            int currentPage = extractPageFromTitle(title);
             player.closeInventory();
+            BountyGUI.openPlayerSelectionMenu(player, currentPage + 1);
+            return;
+        }
+        
+        if (slot == 49) { // Cancel button
+            player.closeInventory();
+            BountyGUI.openMainMenu(player);
             return;
         }
         
         // Get the clicked item
         ItemStack clickedItem = inventory.getItem(slot);
-        if (clickedItem == null || clickedItem.getType() != Material.PLAYER_HEAD) {
+        if (clickedItem == null || (clickedItem.getType() != Material.PLAYER_HEAD && clickedItem.getType() != Material.SKELETON_SKULL)) {
             return;
         }
         
@@ -195,44 +251,58 @@ public class BountyGUIListener implements Listener {
         String displayName = clickedItem.getItemMeta().getDisplayName();
         String targetName = ChatColor.stripColor(displayName);
         
-        Player target = Bukkit.getPlayer(targetName);
-        if (target == null) {
-            player.sendMessage(ChatColor.RED + "Player is no longer online!");
+        // Find target UUID (could be offline player)
+        UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
+        if (targetUUID == null) {
+            player.sendMessage(ChatColor.RED + "Player not found!");
             player.closeInventory();
             return;
         }
         
         // Check if player already has a bounty
-        if (BountyManager.hasBounty(target.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "A bounty already exists on " + target.getName() + "!");
+        if (BountyManager.hasBounty(targetUUID)) {
+            player.sendMessage(ChatColor.RED + "A bounty already exists on " + targetName + "!");
             player.closeInventory();
             return;
         }
         
-        // Set target in tracker and open the bounty setting menu
-        BountyTargetTracker.setTarget(player, target);
-        player.closeInventory();
-        BountyGUI.openSetBountyMenu(player, target);
+        // Check if target is online to determine how to proceed
+        Player onlineTarget = Bukkit.getPlayer(targetUUID);
+        if (onlineTarget != null) {
+            // Online player - use normal flow
+            BountyTargetTracker.setTarget(player, onlineTarget);
+            player.closeInventory();
+            BountyGUI.openSetBountyMenu(player, onlineTarget);
+        } else {
+            // Offline player - create a temporary tracker entry
+            OfflinePlayerTracker.setTarget(player, targetUUID, targetName);
+            player.closeInventory();
+            BountyGUI.openOfflineSetBountyMenu(player, targetName);
+        }
     }
     
     private void handleCurrencyAmountMenuClick(Player player, int slot, String title) {
         // Check if it's the back button (last slot)
         if (slot == 53) {
-            Player target = BountyTargetTracker.getTarget(player);
-            if (target != null) {
-                player.closeInventory();
-                BountyGUI.openSetBountyMenu(player, target);
+            boolean isOffline = title.contains("(Offline)");
+            
+            if (isOffline) {
+                OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
+                if (offlineTarget != null) {
+                    player.closeInventory();
+                    BountyGUI.openOfflineSetBountyMenu(player, offlineTarget.getName());
+                } else {
+                    player.closeInventory();
+                }
             } else {
-                player.closeInventory();
+                Player target = BountyTargetTracker.getTarget(player);
+                if (target != null) {
+                    player.closeInventory();
+                    BountyGUI.openSetBountyMenu(player, target);
+                } else {
+                    player.closeInventory();
+                }
             }
-            return;
-        }
-        
-        // Get target from tracker
-        Player target = BountyTargetTracker.getTarget(player);
-        if (target == null) {
-            player.sendMessage(ChatColor.RED + "Target player is no longer available!");
-            player.closeInventory();
             return;
         }
         
@@ -260,9 +330,29 @@ public class BountyGUIListener implements Listener {
             return;
         }
         
-        setBounty(player, target, currency, amount);
+        boolean isOffline = title.contains("(Offline)");
+        
+        if (isOffline) {
+            // Handle offline bounty setting
+            OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
+            if (offlineTarget != null) {
+                BountyManager.setBounty(offlineTarget.getUuid(), offlineTarget.getName(), player, currency, amount);
+                OfflinePlayerTracker.clearTarget(player);
+            } else {
+                player.sendMessage(ChatColor.RED + "Target player is no longer available!");
+            }
+        } else {
+            // Handle online bounty setting
+            Player target = BountyTargetTracker.getTarget(player);
+            if (target != null) {
+                setBounty(player, target, currency, amount);
+                BountyTargetTracker.clearTarget(player);
+            } else {
+                player.sendMessage(ChatColor.RED + "Target player is no longer available!");
+            }
+        }
+        
         player.closeInventory();
-        BountyTargetTracker.clearTarget(player);
     }
     
     private void handleMyBountiesMenuClick(Player player, int slot) {
@@ -284,11 +374,28 @@ public class BountyGUIListener implements Listener {
                 UUID targetUUID = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
                 if (targetUUID != null) {
                     Player target = Bukkit.getPlayer(targetUUID);
+                    String targetName = PlayerDataManager.getPlayerName(targetUUID);
+                    if (targetName == null) targetName = "Unknown";
+                    
                     if (target != null && target.isOnline()) {
                         player.setCompassTarget(target.getLocation());
-                        player.sendMessage(ChatColor.GREEN + "Compass now pointing to " + target.getName() + "!");
+                        
+                        // Calculate distance and direction
+                        double distance = player.getLocation().distance(target.getLocation());
+                        String distanceStr = String.format("%.1f", distance);
+                        
+                        player.sendMessage(ChatColor.GREEN + "🧭 Compass now pointing to " + target.getName() + "!");
+                        player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
+                        
+                        // Check if both are in hunter/target mode
+                        if (PlayerModeManager.isHunter(player) && PlayerModeManager.isTarget(target)) {
+                            player.sendMessage(ChatColor.YELLOW + "⚔ Hunt is active - both players in combat mode!");
+                        }
+                        
+                        player.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' for detailed tracking info!");
                     } else {
-                        player.sendMessage(ChatColor.RED + "Target is not online!");
+                        player.sendMessage(ChatColor.RED + "❌ " + targetName + " is currently offline.");
+                        player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while target is offline.");
                     }
                 }
                 break;
@@ -337,6 +444,58 @@ public class BountyGUIListener implements Listener {
                 player.closeInventory();
                 BountyGUI.openMainMenu(player);
                 break;
+        }
+    }
+    
+    private int extractPageFromTitle(String title) {
+        try {
+            // Extract page number from title like "Menu (Page 2/5)"
+            String[] parts = title.split("Page ");
+            if (parts.length > 1) {
+                String pageInfo = parts[1];
+                String pageNumber = pageInfo.split("/")[0];
+                return Integer.parseInt(pageNumber);
+            }
+        } catch (Exception e) {
+            // Ignore parsing errors
+        }
+        return 1; // Default to page 1
+    }
+    
+    /**
+     * Simple tracker for offline player bounty setting
+     */
+    private static class OfflinePlayerTracker {
+        private static HashMap<UUID, OfflinePlayerInfo> offlineTargets = new HashMap<>();
+        
+        public static void setTarget(Player player, UUID targetUUID, String targetName) {
+            offlineTargets.put(player.getUniqueId(), new OfflinePlayerInfo(targetUUID, targetName));
+        }
+        
+        public static OfflinePlayerInfo getTarget(Player player) {
+            return offlineTargets.get(player.getUniqueId());
+        }
+        
+        public static void clearTarget(Player player) {
+            offlineTargets.remove(player.getUniqueId());
+        }
+        
+        private static class OfflinePlayerInfo {
+            private final UUID uuid;
+            private final String name;
+            
+            public OfflinePlayerInfo(UUID uuid, String name) {
+                this.uuid = uuid;
+                this.name = name;
+            }
+            
+            public UUID getUuid() {
+                return uuid;
+            }
+            
+            public String getName() {
+                return name;
+            }
         }
     }
 }

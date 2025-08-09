@@ -20,7 +20,7 @@ public class BountyCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status> [player] [currency] [amount]");
+            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track> [player] [currency] [amount]");
             return true;
         }
 
@@ -40,8 +40,10 @@ public class BountyCommand implements CommandExecutor {
                 return handleAbandonBounty(player);
             case "status":
                 return handleStatusCommand(player);
+            case "track":
+                return handleTrackCommand(player);
             default:
-                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, or status");
+                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, or track");
                 return true;
         }
     }
@@ -245,6 +247,65 @@ public class BountyCommand implements CommandExecutor {
         }
         
         return true;
+    }
+    
+    private boolean handleTrackCommand(Player player) {
+        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+        
+        if (acceptedBountyTarget == null) {
+            player.sendMessage(ChatColor.RED + "You haven't accepted any bounties to track.");
+            return true;
+        }
+        
+        Player target = Bukkit.getPlayer(acceptedBountyTarget);
+        String targetName = PlayerDataManager.getPlayerName(acceptedBountyTarget);
+        if (targetName == null) targetName = "Unknown";
+        
+        if (target != null && target.isOnline()) {
+            // Target is online - set compass and give detailed info
+            player.setCompassTarget(target.getLocation());
+            
+            // Calculate distance
+            double distance = player.getLocation().distance(target.getLocation());
+            String distanceStr = String.format("%.1f", distance);
+            
+            // Get direction info
+            String direction = getDirection(player.getLocation(), target.getLocation());
+            
+            player.sendMessage(ChatColor.GREEN + "🧭 Compass now pointing to " + target.getName() + "!");
+            player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks " + direction);
+            
+            // Check if both are in hunter/target mode for extra info
+            if (PlayerModeManager.isHunter(player) && PlayerModeManager.isTarget(target)) {
+                player.sendMessage(ChatColor.YELLOW + "⚔ Both players in combat mode - hunt is active!");
+            }
+        } else {
+            // Target is offline
+            player.sendMessage(ChatColor.RED + "❌ " + targetName + " is currently offline.");
+            player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while target is offline.");
+            player.sendMessage(ChatColor.YELLOW + "💡 Tip: Check '/bounty status' for more information.");
+        }
+        
+        return true;
+    }
+    
+    private String getDirection(org.bukkit.Location from, org.bukkit.Location to) {
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        
+        // Calculate angle in degrees
+        double angle = Math.toDegrees(Math.atan2(dz, dx));
+        if (angle < 0) angle += 360;
+        
+        // Convert to cardinal directions
+        if (angle >= 337.5 || angle < 22.5) return "East";
+        else if (angle >= 22.5 && angle < 67.5) return "Southeast";
+        else if (angle >= 67.5 && angle < 112.5) return "South";
+        else if (angle >= 112.5 && angle < 157.5) return "Southwest";
+        else if (angle >= 157.5 && angle < 202.5) return "West";
+        else if (angle >= 202.5 && angle < 247.5) return "Northwest";
+        else if (angle >= 247.5 && angle < 292.5) return "North";
+        else return "Northeast";
     }
     
     private String getCurrencyName(BountyData.CurrencyType currency) {

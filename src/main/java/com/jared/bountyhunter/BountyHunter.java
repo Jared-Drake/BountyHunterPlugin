@@ -6,8 +6,9 @@ public class BountyHunter extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Initialize data manager
+        // Initialize data managers
         BountyDataManager.initialize(this);
+        PlayerDataManager.initialize(this);
         
         // Load existing bounties
         BountyManager.loadBountiesFromFile();
@@ -15,12 +16,19 @@ public class BountyHunter extends JavaPlugin {
         getCommand("bounty").setExecutor(new BountyCommand());
         getServer().getPluginManager().registerEvents(new BountyListener(), this);
         getServer().getPluginManager().registerEvents(new BountyGUIListener(), this);
+        
+        // Start compass tracking for active hunters
+        CompassTracker.startTracking(this);
+        
         getLogger().info("BountyHunter enabled!");
         getLogger().info("Loaded " + BountyManager.getBounties().size() + " bounties from file.");
     }
     
     @Override
     public void onDisable() {
+        // Stop compass tracking
+        CompassTracker.stopTracking();
+        
         // Save all bounties on shutdown
         BountyDataManager.saveBounties(BountyManager.getBounties());
         getLogger().info("Saved " + BountyManager.getBounties().size() + " bounties to file.");

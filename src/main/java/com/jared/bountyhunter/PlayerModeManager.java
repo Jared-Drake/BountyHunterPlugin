@@ -76,6 +76,9 @@ public class PlayerModeManager {
                 removeTargetEffects(target);
             }
             
+            // Clear compass tracking
+            CompassTracker.clearTracking(hunter);
+            
             // Send notifications
             notifyHunterModeDeactivated(hunter, target);
             if (target != null) {
@@ -108,6 +111,8 @@ public class PlayerModeManager {
             removeTargetEffects(target);
             if (hunter != null) {
                 removeHunterEffects(hunter);
+                // Clear compass tracking
+                CompassTracker.clearTracking(hunter);
             }
             
             // Send notifications

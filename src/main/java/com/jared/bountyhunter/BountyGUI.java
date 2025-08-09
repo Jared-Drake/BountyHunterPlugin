@@ -136,6 +136,41 @@ public class BountyGUI {
         player.openInventory(inv);
     }
     
+    public static void openOfflineSetBountyMenu(Player player, String targetName) {
+        Inventory inv = Bukkit.createInventory(null, 54, SET_BOUNTY_TITLE + " - " + targetName + " (Offline)");
+        
+        // Target player head (skeleton skull for offline)
+        ItemStack targetHead = createGuiItem(Material.SKELETON_SKULL, 
+            ChatColor.GRAY + "Target: " + targetName + " (Offline)",
+            ChatColor.GRAY + "Select currency and amount below",
+            ChatColor.YELLOW + "Player is currently offline");
+        inv.setItem(4, targetHead);
+        
+        // Currency type selection at the top
+        ItemStack diamondCurrency = createGuiItem(DIAMOND_ICON, 
+            ChatColor.AQUA + "Diamonds",
+            ChatColor.GRAY + "Click to select diamond amounts");
+        inv.setItem(18, diamondCurrency);
+        
+        ItemStack emeraldCurrency = createGuiItem(EMERALD_ICON, 
+            ChatColor.GREEN + "Emeralds",
+            ChatColor.GRAY + "Click to select emerald amounts");
+        inv.setItem(19, emeraldCurrency);
+        
+        ItemStack netheriteCurrency = createGuiItem(NETHERITE_ICON, 
+            ChatColor.DARK_PURPLE + "Netherite Ingots",
+            ChatColor.GRAY + "Click to select netherite amounts");
+        inv.setItem(20, netheriteCurrency);
+        
+        // Cancel button
+        ItemStack cancelItem = createGuiItem(Material.BARRIER, 
+            ChatColor.RED + "Cancel", 
+            ChatColor.GRAY + "Click to go back");
+        inv.setItem(26, cancelItem);
+        
+        player.openInventory(inv);
+    }
+    
     public static void openCurrencyAmountMenu(Player player, Player target, BountyData.CurrencyType currency) {
         String currencyName = getCurrencyName(currency);
         Material currencyMaterial = getCurrencyMaterial(currency);
@@ -169,7 +204,45 @@ public class BountyGUI {
         player.openInventory(inv);
     }
     
+    public static void openOfflineCurrencyAmountMenu(Player player, String targetName, BountyData.CurrencyType currency) {
+        String currencyName = getCurrencyName(currency);
+        Material currencyMaterial = getCurrencyMaterial(currency);
+        ChatColor currencyColor = getCurrencyColor(currency);
+        
+        Inventory inv = Bukkit.createInventory(null, 54, currencyColor + "Select " + currencyName + " Amount (Offline)");
+        
+        // Target info at top
+        ItemStack targetInfo = createGuiItem(Material.SKELETON_SKULL,
+            ChatColor.GRAY + "Target: " + targetName + " (Offline)",
+            ChatColor.GRAY + "Currency: " + currencyName);
+        inv.setItem(4, targetInfo);
+        
+        // Amount options (1-64)
+        for (int i = 0; i < 54; i++) {
+            int amount = i + 1;
+            if (amount > 64) break;
+            
+            ItemStack amountItem = createGuiItem(currencyMaterial, 
+                currencyColor + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""),
+                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""),
+                ChatColor.YELLOW + "Target is currently offline");
+            inv.setItem(i, amountItem);
+        }
+        
+        // Back button
+        ItemStack backItem = createGuiItem(Material.ARROW, 
+            ChatColor.YELLOW + "Back", 
+            ChatColor.GRAY + "Click to go back");
+        inv.setItem(53, backItem);
+        
+        player.openInventory(inv);
+    }
+    
     public static void openBountyListMenu(Player player) {
+        openBountyListMenu(player, 1);
+    }
+    
+    public static void openBountyListMenu(Player player, int page) {
         HashMap<UUID, BountyData> bounties = BountyManager.getBounties();
         
         if (bounties.isEmpty()) {
@@ -177,69 +250,192 @@ public class BountyGUI {
             return;
         }
         
-        int size = Math.min(54, ((bounties.size() - 1) / 9 + 1) * 9);
-        Inventory inv = Bukkit.createInventory(null, size, VIEW_BOUNTIES_TITLE);
-        
-        int slot = 0;
+        // Create list of bounties with target names (including offline players)
+        List<BountyDisplayInfo> bountyList = new ArrayList<>();
         for (UUID targetUUID : bounties.keySet()) {
-            Player target = Bukkit.getPlayer(targetUUID);
-            if (target != null) {
-                BountyData bounty = bounties.get(targetUUID);
-                ItemStack bountyItem = createBountyItem(target, bounty);
-                inv.setItem(slot, bountyItem);
-                slot++;
+            BountyData bounty = bounties.get(targetUUID);
+            String targetName = PlayerDataManager.getPlayerName(targetUUID);
+            
+            if (targetName != null) {
+                boolean isOnline = Bukkit.getPlayer(targetUUID) != null;
+                bountyList.add(new BountyDisplayInfo(targetUUID, targetName, bounty, isOnline));
             }
         }
+        
+        if (bountyList.isEmpty()) {
+            player.sendMessage(ChatColor.YELLOW + "No active bounties with valid targets.");
+            return;
+        }
+        
+        // Sort bounties: online targets first, then by bounty amount (highest first)
+        bountyList.sort((a, b) -> {
+            if (a.isOnline() != b.isOnline()) {
+                return a.isOnline() ? -1 : 1; // Online first
+            }
+            return Integer.compare(b.getBounty().getAmount(), a.getBounty().getAmount()); // Higher amount first
+        });
+        
+        // Pagination settings
+        int bountiesPerPage = 45; // 5 rows of 9 slots each (leaving room for navigation)
+        int totalPages = (bountyList.size() - 1) / bountiesPerPage + 1;
+        
+        // Validate page number
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        
+        Inventory inv = Bukkit.createInventory(null, 54, 
+            VIEW_BOUNTIES_TITLE + " (Page " + page + "/" + totalPages + ")");
+        
+        // Calculate start and end indices for this page
+        int startIndex = (page - 1) * bountiesPerPage;
+        int endIndex = Math.min(startIndex + bountiesPerPage, bountyList.size());
+        
+        // Add bounties for this page
+        int slot = 0;
+        for (int i = startIndex; i < endIndex; i++) {
+            BountyDisplayInfo bountyInfo = bountyList.get(i);
+            ItemStack bountyItem = createBountyItemFromInfo(bountyInfo);
+            inv.setItem(slot, bountyItem);
+            slot++;
+        }
+        
+        // Navigation buttons
+        if (page > 1) {
+            ItemStack prevButton = createGuiItem(Material.ARROW,
+                ChatColor.YELLOW + "← Previous Page",
+                ChatColor.GRAY + "Go to page " + (page - 1));
+            inv.setItem(45, prevButton);
+        }
+        
+        if (page < totalPages) {
+            ItemStack nextButton = createGuiItem(Material.ARROW,
+                ChatColor.YELLOW + "Next Page →",
+                ChatColor.GRAY + "Go to page " + (page + 1));
+            inv.setItem(53, nextButton);
+        }
+        
+        // Back button
+        ItemStack backButton = createGuiItem(Material.BARRIER,
+            ChatColor.RED + "Back to Main Menu",
+            ChatColor.GRAY + "Click to go back");
+        inv.setItem(49, backButton);
         
         player.openInventory(inv);
     }
     
     public static void openPlayerSelectionMenu(Player player) {
-        // Get all online players except the current player
-        List<Player> onlinePlayers = new ArrayList<>();
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (!p.equals(player)) {
-                onlinePlayers.add(p);
+        openPlayerSelectionMenu(player, 1);
+    }
+    
+    public static void openPlayerSelectionMenu(Player player, int page) {
+        // Get all known players (online and offline) except the current player
+        List<PlayerDataManager.PlayerInfo> allPlayers = PlayerDataManager.getKnownPlayersSorted();
+        List<PlayerDataManager.PlayerInfo> availablePlayers = new ArrayList<>();
+        
+        for (PlayerDataManager.PlayerInfo playerInfo : allPlayers) {
+            if (!playerInfo.getUuid().equals(player.getUniqueId())) {
+                availablePlayers.add(playerInfo);
             }
         }
         
-        if (onlinePlayers.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "No other players are online!");
+        if (availablePlayers.isEmpty()) {
+            player.sendMessage(ChatColor.RED + "No other players have joined this server!");
             return;
         }
         
-        // Calculate inventory size based on number of players
-        int playerCount = onlinePlayers.size();
-        int rows = (playerCount - 1) / 9 + 1;
-        int size = Math.min(54, rows * 9); // Max 6 rows (54 slots)
+        // Pagination settings
+        int playersPerPage = 45; // 5 rows of 9 slots each (leaving room for navigation)
+        int totalPages = (availablePlayers.size() - 1) / playersPerPage + 1;
         
-        Inventory inv = Bukkit.createInventory(null, size, ChatColor.DARK_BLUE + "Select Target Player");
+        // Validate page number
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
         
+        Inventory inv = Bukkit.createInventory(null, 54, 
+            ChatColor.DARK_BLUE + "Select Target Player (Page " + page + "/" + totalPages + ")");
+        
+        // Calculate start and end indices for this page
+        int startIndex = (page - 1) * playersPerPage;
+        int endIndex = Math.min(startIndex + playersPerPage, availablePlayers.size());
+        
+        // Add players for this page
         int slot = 0;
-        for (Player target : onlinePlayers) {
-            if (slot >= size) break; // Safety check
+        for (int i = startIndex; i < endIndex; i++) {
+            PlayerDataManager.PlayerInfo playerInfo = availablePlayers.get(i);
             
             // Check if player already has a bounty
-            boolean hasBounty = BountyManager.hasBounty(target.getUniqueId());
+            boolean hasBounty = BountyManager.hasBounty(playerInfo.getUuid());
+            boolean isOnline = playerInfo.isOnline();
             
-            ItemStack playerHead = createGuiItem(Material.PLAYER_HEAD, (byte) 0,
-                ChatColor.GREEN + target.getName(),
-                ChatColor.GRAY + "Click to place bounty on " + target.getName(),
-                hasBounty ? ChatColor.RED + "Already has a bounty!" : ChatColor.YELLOW + "Available for bounty");
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GRAY + "Click to place bounty on " + playerInfo.getName());
+            
+            if (isOnline) {
+                lore.add(ChatColor.GREEN + "✓ Currently online");
+            } else {
+                lore.add(ChatColor.YELLOW + "⚬ Currently offline");
+                // Calculate time since last seen
+                long timeSince = System.currentTimeMillis() - playerInfo.getLastSeen();
+                String timeAgo = getTimeAgoString(timeSince);
+                lore.add(ChatColor.GRAY + "Last seen: " + timeAgo + " ago");
+            }
+            
+            if (hasBounty) {
+                lore.add(ChatColor.RED + "Already has a bounty!");
+            } else {
+                lore.add(ChatColor.YELLOW + "Available for bounty");
+            }
+            
+            Material headMaterial = isOnline ? Material.PLAYER_HEAD : Material.SKELETON_SKULL;
+            ChatColor nameColor = isOnline ? ChatColor.GREEN : ChatColor.GRAY;
+            
+            ItemStack playerHead = createGuiItem(headMaterial,
+                nameColor + playerInfo.getName(),
+                lore.toArray(new String[0]));
             
             inv.setItem(slot, playerHead);
             slot++;
         }
         
-        // Add cancel button at the bottom
-        if (size >= 9) {
-            ItemStack cancelItem = createGuiItem(Material.BARRIER,
-                ChatColor.RED + "Cancel",
-                ChatColor.GRAY + "Click to go back");
-            inv.setItem(size - 1, cancelItem);
+        // Navigation buttons
+        if (page > 1) {
+            ItemStack prevButton = createGuiItem(Material.ARROW,
+                ChatColor.YELLOW + "← Previous Page",
+                ChatColor.GRAY + "Go to page " + (page - 1));
+            inv.setItem(45, prevButton);
         }
         
+        if (page < totalPages) {
+            ItemStack nextButton = createGuiItem(Material.ARROW,
+                ChatColor.YELLOW + "Next Page →",
+                ChatColor.GRAY + "Go to page " + (page + 1));
+            inv.setItem(53, nextButton);
+        }
+        
+        // Cancel button
+        ItemStack cancelItem = createGuiItem(Material.BARRIER,
+            ChatColor.RED + "Cancel",
+            ChatColor.GRAY + "Click to go back");
+        inv.setItem(49, cancelItem);
+        
         player.openInventory(inv);
+    }
+    
+    private static String getTimeAgoString(long milliseconds) {
+        long seconds = milliseconds / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        long days = hours / 24;
+        
+        if (days > 0) {
+            return days + " day" + (days > 1 ? "s" : "");
+        } else if (hours > 0) {
+            return hours + " hour" + (hours > 1 ? "s" : "");
+        } else if (minutes > 0) {
+            return minutes + " minute" + (minutes > 1 ? "s" : "");
+        } else {
+            return seconds + " second" + (seconds > 1 ? "s" : "");
+        }
     }
     
     private static ItemStack createBountyItem(Player target, BountyData bounty) {
@@ -465,5 +661,106 @@ public class BountyGUI {
         return createGuiItem(material,
             ChatColor.GOLD + "Hunting: " + target.getName(),
             lore.toArray(new String[0]));
+    }
+    
+    private static ItemStack createBountyItemFromInfo(BountyDisplayInfo bountyInfo) {
+        BountyData bounty = bountyInfo.getBounty();
+        Material material;
+        String currencyName;
+        
+        switch (bounty.getCurrency()) {
+            case DIAMOND:
+                material = Material.DIAMOND;
+                currencyName = "Diamond";
+                break;
+            case EMERALD:
+                material = Material.EMERALD;
+                currencyName = "Emerald";
+                break;
+            case NETHERITE:
+                material = Material.NETHERITE_INGOT;
+                currencyName = "Netherite Ingot";
+                break;
+            default:
+                material = Material.PAPER;
+                currencyName = "Unknown";
+        }
+        
+        List<String> lore = new ArrayList<>();
+        lore.add(ChatColor.GREEN + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
+        lore.add(ChatColor.GRAY + "Set by: " + bounty.getPlacedBy());
+        
+        // Online/Offline status
+        if (bountyInfo.isOnline()) {
+            lore.add(ChatColor.GREEN + "✓ Target is online");
+        } else {
+            lore.add(ChatColor.YELLOW + "⚬ Target is offline");
+        }
+        
+        lore.add("");
+        
+        if (bounty.isAccepted()) {
+            lore.add(ChatColor.RED + "Status: ACCEPTED");
+            lore.add(ChatColor.RED + "Hunter: " + bounty.getHunterName());
+            
+            // Check if both players are online and in hunter/target mode
+            Player hunterPlayer = Bukkit.getPlayer(bounty.getHunterUUID());
+            Player targetPlayer = Bukkit.getPlayer(bountyInfo.getTargetUUID());
+            if (hunterPlayer != null && targetPlayer != null) {
+                if (PlayerModeManager.isHunter(hunterPlayer) && PlayerModeManager.isTarget(targetPlayer)) {
+                    lore.add(ChatColor.DARK_RED + "⚔ ACTIVE HUNT IN PROGRESS ⚔");
+                    lore.add(ChatColor.GRAY + "Both players are online and in combat mode!");
+                } else {
+                    lore.add(ChatColor.YELLOW + "Hunt will activate when both players are online");
+                }
+            } else {
+                lore.add(ChatColor.GRAY + "Waiting for players to come online...");
+            }
+            lore.add("");
+            lore.add(ChatColor.GRAY + "This bounty has been claimed by another hunter");
+        } else {
+            lore.add(ChatColor.GREEN + "Status: AVAILABLE");
+            lore.add("");
+            lore.add(ChatColor.YELLOW + "Left-click to accept this bounty");
+            lore.add(ChatColor.AQUA + "⚡ NEW: If target kills you, they get the reward!");
+            lore.add(ChatColor.GRAY + "Risk vs Reward - hunt carefully...");
+        }
+        
+        return createGuiItem(material, 
+            ChatColor.GOLD + "Bounty on " + bountyInfo.getTargetName(),
+            lore.toArray(new String[0]));
+    }
+    
+    /**
+     * Helper class to hold bounty display information
+     */
+    private static class BountyDisplayInfo {
+        private final UUID targetUUID;
+        private final String targetName;
+        private final BountyData bounty;
+        private final boolean isOnline;
+        
+        public BountyDisplayInfo(UUID targetUUID, String targetName, BountyData bounty, boolean isOnline) {
+            this.targetUUID = targetUUID;
+            this.targetName = targetName;
+            this.bounty = bounty;
+            this.isOnline = isOnline;
+        }
+        
+        public UUID getTargetUUID() {
+            return targetUUID;
+        }
+        
+        public String getTargetName() {
+            return targetName;
+        }
+        
+        public BountyData getBounty() {
+            return bounty;
+        }
+        
+        public boolean isOnline() {
+            return isOnline;
+        }
     }
 }

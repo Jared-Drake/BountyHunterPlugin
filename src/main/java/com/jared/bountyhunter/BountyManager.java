@@ -30,6 +30,10 @@ public class BountyManager {
     }
     
     public static boolean setBounty(Player target, Player placedBy, BountyData.CurrencyType currency, int amount) {
+        return setBounty(target.getUniqueId(), target.getName(), placedBy, currency, amount);
+    }
+    
+    public static boolean setBounty(UUID targetUUID, String targetName, Player placedBy, BountyData.CurrencyType currency, int amount) {
         // Check if player has enough of the currency
         if (!hasEnoughCurrency(placedBy, currency, amount)) {
             placedBy.sendMessage(ChatColor.RED + "You don't have enough " + getCurrencyName(currency) + "s!");
@@ -40,18 +44,23 @@ public class BountyManager {
         removeCurrency(placedBy, currency, amount);
         
         // Create and store bounty
-        BountyData bounty = new BountyData(target.getUniqueId(), placedBy.getUniqueId(), 
+        BountyData bounty = new BountyData(targetUUID, placedBy.getUniqueId(), 
             placedBy.getName(), currency, amount);
-        bounties.put(target.getUniqueId(), bounty);
+        bounties.put(targetUUID, bounty);
         
         // Save bounty to file
-        BountyDataManager.saveBounty(target.getUniqueId(), bounty);
+        BountyDataManager.saveBounty(targetUUID, bounty);
         
         // Notify players
         placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + amount + " " + getCurrencyName(currency) + 
-            (amount > 1 ? "s" : "") + " placed on " + target.getName() + "!");
+            (amount > 1 ? "s" : "") + " placed on " + targetName + "!");
+        
+        // Check if target is online for notification
+        Player onlineTarget = Bukkit.getPlayer(targetUUID);
+        String onlineStatus = onlineTarget != null ? "" : " (offline)";
+        
         Bukkit.broadcastMessage(ChatColor.GOLD + placedBy.getName() + " placed a bounty of " + 
-            amount + " " + getCurrencyName(currency) + (amount > 1 ? "s" : "") + " on " + target.getName() + "!");
+            amount + " " + getCurrencyName(currency) + (amount > 1 ? "s" : "") + " on " + targetName + onlineStatus + "!");
         
         return true;
     }
