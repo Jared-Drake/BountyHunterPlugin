@@ -252,41 +252,15 @@ public class BountyCommand implements CommandExecutor {
     }
     
     private boolean handleTrackCommand(Player player) {
-        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
-        
-        if (acceptedBountyTarget == null) {
-            player.sendMessage(ChatColor.RED + "You haven't accepted any bounties to track.");
+        if (!PlayerModeManager.isHunter(player)) {
+            player.sendMessage(ChatColor.RED + "❌ You must be in hunter mode to use enhanced tracking!");
+            player.sendMessage(ChatColor.GRAY + "💡 Accept a bounty first to enter hunter mode.");
             return true;
         }
         
-        Player target = Bukkit.getPlayer(acceptedBountyTarget);
-        String targetName = PlayerDataManager.getPlayerName(acceptedBountyTarget);
-        if (targetName == null) targetName = "Unknown";
-        
-        if (target != null && target.isOnline()) {
-            // Target is online - set compass and give detailed info
-            player.setCompassTarget(target.getLocation());
-            
-            // Calculate distance
-            double distance = player.getLocation().distance(target.getLocation());
-            String distanceStr = String.format("%.1f", distance);
-            
-            // Get direction info
-            String direction = getDirection(player.getLocation(), target.getLocation());
-            
-            player.sendMessage(ChatColor.GREEN + "🧭 Compass now pointing to " + target.getName() + "!");
-            player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks " + direction);
-            
-            // Check if both are in hunter/target mode for extra info
-            if (PlayerModeManager.isHunter(player) && PlayerModeManager.isTarget(target)) {
-                player.sendMessage(ChatColor.YELLOW + "⚔ Both players in combat mode - hunt is active!");
-            }
-        } else {
-            // Target is offline
-            player.sendMessage(ChatColor.RED + "❌ " + targetName + " is currently offline.");
-            player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while target is offline.");
-            player.sendMessage(ChatColor.YELLOW + "💡 Tip: Check '/bounty status' for more information.");
-        }
+        // Use enhanced tracking info
+        String trackingInfo = EnhancedTracker.getDetailedTrackingInfo(player);
+        player.sendMessage(trackingInfo);
         
         return true;
     }

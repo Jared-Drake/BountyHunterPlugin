@@ -19,7 +19,7 @@ public class CompassTracker extends BukkitRunnable {
             instance.cancel();
         }
         instance = new CompassTracker();
-        instance.runTaskTimer(plugin, 0L, 60L); // Run every 3 seconds (60 ticks)
+        instance.runTaskTimer(plugin, 0L, 40L); // Run every 2 seconds (40 ticks) for enhanced tracking
     }
     
     public static void stopTracking() {

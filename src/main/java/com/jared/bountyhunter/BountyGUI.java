@@ -65,7 +65,7 @@ public class BountyGUI {
                 statusTitle = ChatColor.RED + "⚔ Hunter Mode Active ⚔";
                 Player target = PlayerModeManager.getHunterTarget(player);
                 statusLore.add(ChatColor.GRAY + "You are hunting: " + (target != null ? target.getName() : "Unknown"));
-                statusLore.add(ChatColor.GREEN + "Effects: Speed I, Night Vision");
+                statusLore.add(ChatColor.GREEN + "Effects: Night Vision, Enhanced Tracking");
                 statusLore.add(ChatColor.YELLOW + "Kill your target to claim the bounty!");
                 statusLore.add(ChatColor.RED + "⚠ If they kill you, they get the reward!");
                 break;
@@ -74,7 +74,7 @@ public class BountyGUI {
                 statusTitle = ChatColor.YELLOW + "⚠ Target Mode Active ⚠";
                 Player hunter = PlayerModeManager.getTargetHunter(player);
                 statusLore.add(ChatColor.GRAY + "You are being hunted by: " + (hunter != null ? hunter.getName() : "Unknown"));
-                statusLore.add(ChatColor.GREEN + "Effects: Speed I");
+                statusLore.add(ChatColor.GREEN + "Effects: None (stay alert!)");
                 statusLore.add(ChatColor.YELLOW + "Survive or fight back!");
                 statusLore.add(ChatColor.AQUA + "⚡ Kill your hunter to claim the bounty yourself!");
                 break;
@@ -650,8 +650,8 @@ public class BountyGUI {
             Player hunter = Bukkit.getPlayer(bounty.getHunterUUID());
             if (hunter != null && PlayerModeManager.isHunter(hunter) && PlayerModeManager.isTarget(target)) {
                 lore.add(ChatColor.DARK_RED + "⚔ HUNTER MODE ACTIVE ⚔");
-                lore.add(ChatColor.GRAY + "You have speed & night vision!");
-                lore.add(ChatColor.GRAY + "Target has speed boost for escape!");
+                lore.add(ChatColor.GRAY + "You have night vision & enhanced tracking!");
+                lore.add(ChatColor.GRAY + "Target has no special effects!");
             } else {
                 lore.add(ChatColor.YELLOW + "Hunter mode will activate soon...");
             }

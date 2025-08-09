@@ -20,6 +20,7 @@ public class BountyHunter extends JavaPlugin {
         
         // Start compass tracking for active hunters
         CompassTracker.startTracking(this);
+        EnhancedTracker.startEnhancedTracking(this);
         
         getLogger().info("BountyHunter enabled!");
         getLogger().info("Loaded " + BountyManager.getBounties().size() + " bounties from file.");
@@ -29,6 +30,7 @@ public class BountyHunter extends JavaPlugin {
     public void onDisable() {
         // Stop compass tracking
         CompassTracker.stopTracking();
+        EnhancedTracker.stopEnhancedTracking();
         
         // Save all bounties on shutdown
         BountyDataManager.saveBounties(BountyManager.getBounties());

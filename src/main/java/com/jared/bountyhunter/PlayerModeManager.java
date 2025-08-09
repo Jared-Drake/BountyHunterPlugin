@@ -78,6 +78,7 @@ public class PlayerModeManager {
             
             // Clear compass tracking
             CompassTracker.clearTracking(hunter);
+            EnhancedTracker.clearHunterData(hunter);
             
             // Send notifications
             notifyHunterModeDeactivated(hunter, target);
@@ -113,6 +114,7 @@ public class PlayerModeManager {
                 removeHunterEffects(hunter);
                 // Clear compass tracking
                 CompassTracker.clearTracking(hunter);
+                EnhancedTracker.clearHunterData(hunter);
             }
             
             // Send notifications
@@ -173,8 +175,7 @@ public class PlayerModeManager {
     }
     
     private static void applyHunterEffects(Player hunter) {
-        // Give hunter slight speed boost and night vision
-        hunter.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 0, false, false));
+        // Give hunter night vision for enhanced tracking
         hunter.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, Integer.MAX_VALUE, 0, false, false));
         
         // Play hunter sound
@@ -182,20 +183,16 @@ public class PlayerModeManager {
     }
     
     private static void applyTargetEffects(Player target) {
-        // Give target slight speed boost for escape
-        target.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 0, false, false));
-        
-        // Play target sound
+        // Play target sound (no speed boost)
         target.playSound(target.getLocation(), Sound.ENTITY_VILLAGER_HURT, 1.0f, 0.8f);
     }
     
     private static void removeHunterEffects(Player hunter) {
-        hunter.removePotionEffect(PotionEffectType.SPEED);
         hunter.removePotionEffect(PotionEffectType.NIGHT_VISION);
     }
     
     private static void removeTargetEffects(Player target) {
-        target.removePotionEffect(PotionEffectType.SPEED);
+        // No effects to remove for targets now
     }
     
     private static void notifyHunterModeActivated(Player hunter, Player target) {
@@ -203,7 +200,7 @@ public class PlayerModeManager {
         hunter.sendMessage(ChatColor.DARK_RED + "═══════════════════════════════");
         hunter.sendMessage(ChatColor.RED + "⚔ " + ChatColor.BOLD + "BOUNTY HUNTER MODE ACTIVATED" + ChatColor.RED + " ⚔");
         hunter.sendMessage(ChatColor.GRAY + "Target: " + ChatColor.WHITE + target.getName());
-        hunter.sendMessage(ChatColor.GRAY + "You have enhanced speed and night vision!");
+        hunter.sendMessage(ChatColor.GRAY + "You have enhanced night vision and tracking!");
         hunter.sendMessage(ChatColor.YELLOW + "Hunt wisely, hunter...");
         hunter.sendMessage(ChatColor.DARK_RED + "═══════════════════════════════");
         hunter.sendMessage("");
@@ -218,7 +215,7 @@ public class PlayerModeManager {
         target.sendMessage(ChatColor.DARK_RED + "═══════════════════════════════");
         target.sendMessage(ChatColor.RED + "⚠ " + ChatColor.BOLD + "TARGET MODE ACTIVATED" + ChatColor.RED + " ⚠");
         target.sendMessage(ChatColor.GRAY + "Hunter: " + ChatColor.WHITE + hunter.getName());
-        target.sendMessage(ChatColor.GRAY + "You have enhanced speed for escape!");
+        target.sendMessage(ChatColor.GRAY + "You are being hunted!");
         target.sendMessage(ChatColor.YELLOW + "Stay alert and survive...");
         target.sendMessage(ChatColor.DARK_RED + "═══════════════════════════════");
         target.sendMessage("");
