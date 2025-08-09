@@ -132,10 +132,18 @@ bounties:
 - Spigot/Paper 1.20+
 - No external dependencies required
 
+## Future Features in the works
+
+ - Trackers compass for bounty hunters
+ - Clues for hunters
+ - Bounty Hunter leveling system
+ - Bounty hunter contracts
+
 ## Version History
 
 - **v2.1**: 🎯 **Major Update** - Added bounty acceptance system with exclusive hunter assignments, enhanced GUI with interactive bounty management, compass tracking, and smart validation
 - **v2.0**: Complete rewrite with GUI interface, custom currency system, and persistent data storage
+<<<<<<< HEAD
 - **v1.0**: Original version with economy plugin integration
 
 ## 🎮 What's New in v2.1?
@@ -162,3 +170,6 @@ bounties:
 - Unaccepted bounties can still be claimed by anyone
 - Command system enhanced but maintains full compatibility
 - No breaking changes to existing functionality 
+=======
+- **v1.0**: Original version with economy plugin integration 
+>>>>>>> c2259a902d43b39b24b37bcf9b3ccd0ccbf60817
