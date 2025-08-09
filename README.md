@@ -1,175 +1,86 @@
 # BountyHunter Plugin v2.1
 
-A comprehensive GUI-based bounty hunting plugin for Minecraft servers with an advanced bounty acceptance system. Features exclusive hunter assignments, interactive GUI management, and persistent data storage using diamonds, emeralds, and netherite ingots as currency.
+A comprehensive Minecraft bounty hunting plugin with GUI interface, hunter/target modes, enhanced tracking, and 24-hour cooldown protection.
 
-## Features
+## ✨ Key Features
 
-### 🎯 **Core Bounty System**
-- **GUI Interface**: Easy-to-use graphical interface for managing bounties
-- **Multiple Currencies**: Support for diamonds, emeralds, and netherite ingots
-- **Large Amount Support**: Bounties can range from 1-64 of any currency
-- **Real-time Updates**: Bounties are automatically claimed when players are killed
-- **Inventory Integration**: Currency is taken from and given to player inventories
-- **Data Persistence**: Bounties survive server restarts and crashes
-- **Offline Player Support**: Place bounties on offline players
+### 🎯 **Smart Bounty System**
+- **GUI Interface**: Easy-to-use graphical menus for all bounty operations
+- **Multiple Currencies**: Diamonds, emeralds, and netherite ingots (1-64 amounts)
+- **Offline Support**: Place bounties on players who have previously joined
+- **24-Hour Cooldown**: Prevents bounty spam after claims
+- **Data Persistence**: Survives server restarts and crashes
 
-### 🎮 **NEW in v2.1: Bounty Acceptance System**
-- **Exclusive Hunting**: Players can accept specific bounties to become the designated hunter
-- **Hunter Protection**: Only the accepted hunter can claim the bounty reward
-- **Interactive GUI**: Accept, abandon, and manage bounties through intuitive menus
-- **Compass Tracking**: Point your compass toward your accepted bounty target
-- **Smart Validation**: Prevents accepting your own bounties or bounties on yourself
-- **Flexible Management**: Abandon hunts to make bounties available again
-- **Dual Interface**: Both command and GUI support for all bounty operations
+### ⚔️ **Hunter & Target Modes**
+- **Exclusive Hunting**: Accept bounties to become the designated hunter
+- **Hunter Mode**: Night vision + enhanced tracking tools
+- **Target Mode**: Alert notifications when being hunted
+- **Reverse Bounty**: Targets can claim the bounty by killing their hunter
+- **Mode Effects**: Automatic activation when both players are online
 
-## Commands
+### 🧭 **Enhanced Tracking System**
+- **Real-Time Compass**: Auto-updates every 2 seconds pointing to target
+- **Distance Alerts**: Proximity-based notifications (Very Close, Nearby, etc.)
+- **Tracking Tools**: Automatic compass and spyglass provision
+- **Direction Info**: Live distance and direction updates
+- **Cross-Dimension**: Handles different worlds gracefully
 
-### 📝 **Basic Commands**
-- `/bounty gui` - Opens the main bounty GUI menu
-- `/bounty set <player> <currency> <amount>` - Set a bounty via command
-- `/bounty list` - List all active bounties with acceptance status
-- `/bounty remove <player>` - Remove a bounty you placed
+## 🎮 Quick Start
 
-### 🎯 **NEW in v2.1: Acceptance Commands**
-- `/bounty accept <player>` - Accept a bounty on the specified player
-- `/bounty abandon` - Abandon your currently accepted bounty
+### Commands
+- `/bounty gui` - Open main menu
+- `/bounty set <player> <currency> <amount>` - Set bounty
+- `/bounty accept <player>` - Accept a bounty hunt
+- `/bounty track` - Enhanced tracking info (hunter mode only)
+- `/bounty status` - Check your current mode and bounty info
+- `/bounty cooldown` - Check cooldown status
 
-## GUI Usage
+### GUI Usage
+1. **Set Bounty**: Select player → Choose currency → Set amount
+2. **Accept Hunt**: Browse available bounties → Click to accept
+3. **Track Target**: Use compass, spyglass, and `/bounty track` command
+4. **Complete Hunt**: Kill target to claim reward (or target kills you!)
 
-### 🏠 **Main Menu Navigation**
-1. **Set Bounty** - Place bounties on players
-2. **View Active Bounties** - Browse and accept available bounties
-3. **My Accepted Bounties** - Manage your active hunts (NEW!)
+## 🛡️ Anti-Abuse Features
 
-### 💰 **Setting Bounties**
-1. Click "Set Bounty" → Select target player → Choose currency → Select amount (1-64)
-2. Currency is automatically deducted from your inventory
-3. Bounty becomes available for other players to accept
+- **24-Hour Cooldowns**: No new bounties on recently claimed players
+- **No Speed Effects**: Balanced gameplay without movement advantages  
+- **Enhanced Tracking**: Skill-based hunting with proper tools
+- **Cooldown Commands**: Check and manage cooldowns (admin can clear)
 
-### 🎯 **NEW in v2.1: Accepting & Managing Bounties**
-1. **Browse Available Bounties**: Click "View Active Bounties"
-   - 🟢 **[AVAILABLE]** bounties can be accepted
-   - 🔴 **[ACCEPTED by PlayerName]** bounties are already claimed
-2. **Accept a Bounty**: Click on an available bounty → Confirm acceptance
-3. **Manage Your Hunt**: Click "My Accepted Bounties"
-   - **Track Target**: Set compass to point at your target
-   - **Abandon Hunt**: Release bounty back to available pool
-   - View target online/offline status
-4. **Complete Hunt**: Kill your target to automatically claim the reward!
+## 🔧 Installation
 
-## Currency Types
+1. Download `bountyhunter-2.1-SNAPSHOT.jar`
+2. Place in server's `plugins` folder
+3. Restart server
+4. Ready to use! No permissions or configuration needed
 
-- **Diamonds**: Blue currency option (1-64 diamonds)
-- **Emeralds**: Green currency option (1-64 emeralds)  
-- **Netherite Ingots**: Purple currency option (1-64 netherite ingots)
+## 📁 Data Files
 
-## How It Works
+- `bounties.yml` - Active bounties
+- `players.yml` - Known player database  
+- `cooldowns.yml` - 24-hour cooldown tracking
 
-### 💰 **Bounty Creation & Management**
-1. **Setting Bounties**: Players must have the required currency in their inventory
-2. **Currency Removal**: The specified amount is removed from the player's inventory
-3. **Bounty Storage**: Bounties are stored persistently in `bounties.yml` file
-4. **Bounty Removal**: Only the player who placed the bounty can remove it
+## 🎯 How It Works
 
-### 🎯 **NEW in v2.1: Bounty Acceptance System**
-5. **Browse & Accept**: Players can view all available bounties and accept specific ones
-6. **Exclusive Hunting**: Once accepted, only the hunter can claim that bounty
-7. **Hunter Validation**: System prevents accepting own bounties or bounties on yourself
-8. **Flexible Management**: Hunters can abandon bounties, making them available again
+1. **Place Bounty**: Currency deducted, bounty becomes available
+2. **Accept Hunt**: Enter hunter mode with tracking tools
+3. **Track Target**: Use compass, enhanced tracking, and proximity alerts
+4. **Complete Hunt**: Kill target for reward, or target kills hunter for reverse bounty
+5. **Cooldown**: 24-hour protection prevents immediate re-bounty
 
-### ⚔️ **Bounty Completion**
-9. **Mixed Claims**: Unaccepted bounties can be claimed by anyone (legacy behavior)
-10. **Exclusive Claims**: Accepted bounties can only be claimed by the designated hunter
-11. **Automatic Rewards**: Currency is automatically given when bounties are claimed
-12. **Smart Notifications**: Different messages for accepted vs. unaccepted bounty claims
+## 🔄 Version History
 
-### 🔄 **Persistence & Reliability**
-13. **Data Persistence**: All bounty data including hunter assignments survive server restarts
-14. **Offline Support**: Bounties and acceptances remain active for offline players
-15. **Crash Recovery**: All bounty information is preserved even during server crashes
+- **v2.1**: Hunter/target modes, enhanced tracking, 24-hour cooldowns, reverse bounties
+- **v2.0**: GUI interface, multiple currencies, bounty acceptance system
+- **v1.0**: Original command-based version
 
-## Installation
+## 🎮 What Makes This Special?
 
-1. Download the plugin JAR file
-2. Place it in your server's `plugins` folder
-3. Restart your server
-4. The plugin will be ready to use!
+- **No Economy Plugin**: Self-contained currency system
+- **Balanced PvP**: No speed advantages, skill-based hunting
+- **Smart Protection**: Cooldowns prevent harassment
+- **Rich Tracking**: Real-time updates with tools and notifications
+- **Fair Play**: Targets can fight back and claim bounties themselves
 
-## Permissions
-
-No special permissions are required. All players can use the bounty system.
-
-## Configuration
-
-The plugin creates a `bounties.yml` file in the plugin folder that stores all active bounties. This file is automatically managed by the plugin and should not be edited manually.
-
-### Data Persistence
-
-- **Automatic Loading**: Bounties are automatically loaded when the server starts
-- **Automatic Saving**: Bounties are saved immediately when placed or removed
-- **Server Shutdown**: All bounties are saved when the server shuts down
-- **Offline Players**: Bounties remain active even if the target player is offline
-- **Crash Recovery**: Bounties are preserved even if the server crashes
-
-### File Structure
-
-The `bounties.yml` file stores bounty data in this format:
-```yaml
-bounties:
-  "uuid-of-target-player":
-    targetUUID: "uuid-of-target-player"
-    placedByUUID: "uuid-of-player-who-placed-bounty"
-    placedByName: "PlayerName"
-    currency: "DIAMOND"
-    amount: 10
-    hunterUUID: "uuid-of-hunter-who-accepted" # NEW in v2.1
-    hunterName: "HunterPlayerName"            # NEW in v2.1
-    isAccepted: true                          # NEW in v2.1
-```
-
-## Dependencies
-
-- Spigot/Paper 1.20+
-- No external dependencies required
-
-## Future Features in the works
-
- - Trackers compass for bounty hunters
- - Clues for hunters
- - Bounty Hunter leveling system
- - Bounty hunter contracts
-
-## Version History
-
-- **v2.1**: 🎯 **Major Update** - Added bounty acceptance system with exclusive hunter assignments, enhanced GUI with interactive bounty management, compass tracking, and smart validation
-- **v2.0**: Complete rewrite with GUI interface, custom currency system, and persistent data storage
-<<<<<<< HEAD
-- **v1.0**: Original version with economy plugin integration
-
-## 🎮 What's New in v2.1?
-
-### 🎯 **Bounty Acceptance System**
-- Players can now accept specific bounties to become exclusive hunters
-- Only the accepted hunter can claim the bounty reward
-- Prevents bounty stealing and creates strategic hunter-target relationships
-
-### 🖱️ **Enhanced GUI Experience**
-- **My Accepted Bounties** menu for managing active hunts
-- Interactive bounty browsing with clear status indicators
-- Confirmation dialogs for important actions
-- Compass tracking integration
-
-### 🧭 **Smart Features**
-- **Compass Tracking**: Point compass toward accepted bounty targets
-- **Status Indicators**: Clear visual feedback on bounty availability
-- **Smart Validation**: Prevents accepting own bounties or invalid targets
-- **Flexible Management**: Abandon hunts to make bounties available again
-
-### 🔄 **Backwards Compatibility**
-- All existing bounties continue to work normally
-- Unaccepted bounties can still be claimed by anyone
-- Command system enhanced but maintains full compatibility
-- No breaking changes to existing functionality 
-=======
-- **v1.0**: Original version with economy plugin integration 
->>>>>>> c2259a902d43b39b24b37bcf9b3ccd0ccbf60817
+Perfect for PvP servers wanting structured bounty hunting without exploits!
