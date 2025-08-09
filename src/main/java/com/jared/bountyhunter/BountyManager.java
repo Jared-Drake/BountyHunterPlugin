@@ -34,6 +34,16 @@ public class BountyManager {
     }
     
     public static boolean setBounty(UUID targetUUID, String targetName, Player placedBy, BountyData.CurrencyType currency, int amount) {
+        // Check if target is on cooldown
+        if (BountyCooldownManager.isOnCooldown(targetUUID)) {
+            long remainingTime = BountyCooldownManager.getRemainingCooldown(targetUUID);
+            String timeString = BountyCooldownManager.formatRemainingTime(remainingTime);
+            placedBy.sendMessage(ChatColor.RED + "Cannot place bounty on " + targetName + "!");
+            placedBy.sendMessage(ChatColor.GRAY + "Player is on bounty cooldown for " + ChatColor.WHITE + timeString);
+            placedBy.sendMessage(ChatColor.YELLOW + "💡 Cooldowns prevent bounty spam after a bounty is claimed.");
+            return false;
+        }
+        
         // Check if player has enough of the currency
         if (!hasEnoughCurrency(placedBy, currency, amount)) {
             placedBy.sendMessage(ChatColor.RED + "You don't have enough " + getCurrencyName(currency) + "s!");
@@ -107,6 +117,9 @@ public class BountyManager {
             bounty.getAmount() + " " + getCurrencyName(bounty.getCurrency()) + (bounty.getAmount() > 1 ? "s" : "") + 
             " for killing " + killed.getName() + "!");
         
+        // Add 24-hour cooldown for the killed player
+        BountyCooldownManager.addCooldown(killedUUID);
+        
         // Remove bounty
         bounties.remove(killedUUID);
         BountyDataManager.removeBounty(killedUUID);
@@ -146,6 +159,9 @@ public class BountyManager {
         Bukkit.broadcastMessage(ChatColor.GOLD + "⚔ " + target.getName() + " defended against their bounty hunter " + 
             deadHunter.getName() + " and claimed the " + bounty.getAmount() + " " + 
             getCurrencyName(bounty.getCurrency()) + (bounty.getAmount() > 1 ? "s" : "") + " bounty!");
+        
+        // Add 24-hour cooldown for the target (they successfully defended)
+        BountyCooldownManager.addCooldown(targetUUID);
         
         // Remove bounty
         bounties.remove(targetUUID);

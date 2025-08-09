@@ -366,6 +366,7 @@ public class BountyGUI {
             // Check if player already has a bounty
             boolean hasBounty = BountyManager.hasBounty(playerInfo.getUuid());
             boolean isOnline = playerInfo.isOnline();
+            boolean isOnCooldown = BountyCooldownManager.isOnCooldown(playerInfo.getUuid());
             
             List<String> lore = new ArrayList<>();
             lore.add(ChatColor.GRAY + "Click to place bounty on " + playerInfo.getName());
@@ -382,6 +383,11 @@ public class BountyGUI {
             
             if (hasBounty) {
                 lore.add(ChatColor.RED + "Already has a bounty!");
+            } else if (isOnCooldown) {
+                long remainingTime = BountyCooldownManager.getRemainingCooldown(playerInfo.getUuid());
+                String timeString = BountyCooldownManager.formatRemainingTime(remainingTime);
+                lore.add(ChatColor.RED + "⏰ On bounty cooldown!");
+                lore.add(ChatColor.GRAY + "Time remaining: " + timeString);
             } else {
                 lore.add(ChatColor.YELLOW + "Available for bounty");
             }

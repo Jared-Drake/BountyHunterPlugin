@@ -20,7 +20,7 @@ public class BountyCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track> [player] [currency] [amount]");
+            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track|cooldown> [player] [currency] [amount]");
             return true;
         }
 
@@ -42,8 +42,10 @@ public class BountyCommand implements CommandExecutor {
                 return handleStatusCommand(player);
             case "track":
                 return handleTrackCommand(player);
+            case "cooldown":
+                return handleCooldownCommand(player, args);
             default:
-                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, or track");
+                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, track, or cooldown");
                 return true;
         }
     }
@@ -306,6 +308,133 @@ public class BountyCommand implements CommandExecutor {
         else if (angle >= 202.5 && angle < 247.5) return "Northwest";
         else if (angle >= 247.5 && angle < 292.5) return "North";
         else return "Northeast";
+    }
+    
+    private boolean handleCooldownCommand(Player player, String[] args) {
+        if (args.length < 2) {
+            // Show player's own cooldown or list all cooldowns
+            return showCooldownInfo(player);
+        }
+        
+        String subCommand = args[1].toLowerCase();
+        
+        switch (subCommand) {
+            case "list":
+                return listAllCooldowns(player);
+            case "clear":
+                if (args.length < 3) {
+                    player.sendMessage(ChatColor.RED + "Usage: /bounty cooldown clear <player>");
+                    return true;
+                }
+                return clearPlayerCooldown(player, args[2]);
+            case "clearall":
+                return clearAllCooldowns(player);
+            default:
+                // Check specific player's cooldown
+                return checkPlayerCooldown(player, args[1]);
+        }
+    }
+    
+    private boolean showCooldownInfo(Player player) {
+        player.sendMessage(ChatColor.YELLOW + "=== Bounty Cooldown Info ===");
+        
+        // Check if player is on cooldown
+        if (BountyCooldownManager.isOnCooldown(player.getUniqueId())) {
+            long remainingTime = BountyCooldownManager.getRemainingCooldown(player.getUniqueId());
+            String timeString = BountyCooldownManager.formatRemainingTime(remainingTime);
+            player.sendMessage(ChatColor.RED + "⏰ You are on bounty cooldown!");
+            player.sendMessage(ChatColor.GRAY + "Time remaining: " + ChatColor.WHITE + timeString);
+            player.sendMessage(ChatColor.YELLOW + "💡 No bounties can be placed on you during this time.");
+        } else {
+            player.sendMessage(ChatColor.GREEN + "✓ You are not on bounty cooldown.");
+            player.sendMessage(ChatColor.GRAY + "Bounties can be placed on you normally.");
+        }
+        
+        player.sendMessage(ChatColor.GRAY + "Commands:");
+        player.sendMessage(ChatColor.GRAY + "• /bounty cooldown <player> - Check specific player");
+        player.sendMessage(ChatColor.GRAY + "• /bounty cooldown list - List all cooldowns");
+        
+        return true;
+    }
+    
+    private boolean checkPlayerCooldown(Player player, String targetName) {
+        UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
+        if (targetUUID == null) {
+            player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+            return true;
+        }
+        
+        String actualName = PlayerDataManager.getPlayerName(targetUUID);
+        if (actualName == null) actualName = targetName;
+        
+        if (BountyCooldownManager.isOnCooldown(targetUUID)) {
+            long remainingTime = BountyCooldownManager.getRemainingCooldown(targetUUID);
+            String timeString = BountyCooldownManager.formatRemainingTime(remainingTime);
+            player.sendMessage(ChatColor.YELLOW + "⏰ " + actualName + " is on bounty cooldown.");
+            player.sendMessage(ChatColor.GRAY + "Time remaining: " + ChatColor.WHITE + timeString);
+        } else {
+            player.sendMessage(ChatColor.GREEN + "✓ " + actualName + " is not on bounty cooldown.");
+        }
+        
+        return true;
+    }
+    
+    private boolean listAllCooldowns(Player player) {
+        var cooldowns = BountyCooldownManager.getAllCooldowns();
+        
+        if (cooldowns.isEmpty()) {
+            player.sendMessage(ChatColor.YELLOW + "No active bounty cooldowns.");
+            return true;
+        }
+        
+        player.sendMessage(ChatColor.YELLOW + "=== Active Bounty Cooldowns ===");
+        for (var entry : cooldowns.entrySet()) {
+            String playerName = PlayerDataManager.getPlayerName(entry.getKey());
+            if (playerName == null) playerName = "Unknown";
+            
+            long remainingTime = BountyCooldownManager.getRemainingCooldown(entry.getKey());
+            String timeString = BountyCooldownManager.formatRemainingTime(remainingTime);
+            
+            player.sendMessage(ChatColor.GRAY + "• " + ChatColor.WHITE + playerName + ChatColor.GRAY + ": " + timeString);
+        }
+        
+        return true;
+    }
+    
+    private boolean clearPlayerCooldown(Player player, String targetName) {
+        if (!player.hasPermission("bountyhunter.admin")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to clear cooldowns.");
+            return true;
+        }
+        
+        UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
+        if (targetUUID == null) {
+            player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+            return true;
+        }
+        
+        String actualName = PlayerDataManager.getPlayerName(targetUUID);
+        if (actualName == null) actualName = targetName;
+        
+        if (BountyCooldownManager.clearCooldown(targetUUID)) {
+            player.sendMessage(ChatColor.GREEN + "✓ Cleared bounty cooldown for " + actualName + ".");
+        } else {
+            player.sendMessage(ChatColor.YELLOW + actualName + " was not on cooldown.");
+        }
+        
+        return true;
+    }
+    
+    private boolean clearAllCooldowns(Player player) {
+        if (!player.hasPermission("bountyhunter.admin")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to clear cooldowns.");
+            return true;
+        }
+        
+        int clearedCount = BountyCooldownManager.clearAllCooldowns();
+        player.sendMessage(ChatColor.GREEN + "✓ Cleared " + clearedCount + " bounty cooldowns.");
+        
+        return true;
     }
     
     private String getCurrencyName(BountyData.CurrencyType currency) {

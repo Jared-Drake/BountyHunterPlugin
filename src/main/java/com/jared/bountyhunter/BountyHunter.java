@@ -9,6 +9,7 @@ public class BountyHunter extends JavaPlugin {
         // Initialize data managers
         BountyDataManager.initialize(this);
         PlayerDataManager.initialize(this);
+        BountyCooldownManager.initialize(this);
         
         // Load existing bounties
         BountyManager.loadBountiesFromFile();
