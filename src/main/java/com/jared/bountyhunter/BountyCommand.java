@@ -20,7 +20,7 @@ public class BountyCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track|cooldown> [player] [currency] [amount]");
+            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track|cooldown|adminremove> [player] [currency] [amount]");
             return true;
         }
 
@@ -34,6 +34,8 @@ public class BountyCommand implements CommandExecutor {
                 return handleListBounties(player);
             case "remove":
                 return handleRemoveBounty(player, args);
+            case "adminremove":
+                return handleAdminRemoveBounty(player, args);
             case "accept":
                 return handleAcceptBounty(player, args);
             case "abandon":
@@ -45,7 +47,7 @@ public class BountyCommand implements CommandExecutor {
             case "cooldown":
                 return handleCooldownCommand(player, args);
             default:
-                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, track, or cooldown");
+                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, track, cooldown, or adminremove");
                 return true;
         }
     }
@@ -134,9 +136,33 @@ public class BountyCommand implements CommandExecutor {
             return true;
         }
 
-        Player target = Bukkit.getPlayer(args[1]);
+        String targetName = args[1];
+        Player target = Bukkit.getPlayer(targetName);
+        
+        // Check if target is online or offline
         if (target == null) {
-            player.sendMessage(ChatColor.RED + "Player not found: " + args[1]);
+            // Target is offline, try to find by name
+            UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
+            if (targetUUID == null) {
+                player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+                return true;
+            }
+            
+            if (!BountyManager.hasBounty(targetUUID)) {
+                player.sendMessage(ChatColor.RED + "No bounty exists on " + targetName + ".");
+                return true;
+            }
+            
+            BountyData bounty = BountyManager.getBounty(targetUUID);
+            if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
+                BountyManager.removeBountyOffline(targetUUID, player);
+            } else if (targetUUID.equals(player.getUniqueId()) && player.hasPermission("bountyhunter.selfremove")) {
+                // Allow targets to remove their own bounty if they have permission
+                BountyManager.removeBountyOffline(targetUUID, player);
+                player.sendMessage(ChatColor.YELLOW + "You have removed the bounty on yourself.");
+            } else {
+                player.sendMessage(ChatColor.RED + "You can only remove bounties that you placed!");
+            }
             return true;
         }
 
@@ -147,13 +173,57 @@ public class BountyCommand implements CommandExecutor {
 
         BountyData bounty = BountyManager.getBounty(target.getUniqueId());
         if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
-            BountyManager.removeBounty(target.getUniqueId());
-            String currencyName = getCurrencyName(bounty.getCurrency());
-            player.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
-                currencyName + (bounty.getAmount() > 1 ? "s" : "") + " removed from " + target.getName() + "!");
+            BountyManager.removeBountyWithCleanup(target.getUniqueId(), player);
+        } else if (target.getUniqueId().equals(player.getUniqueId()) && player.hasPermission("bountyhunter.selfremove")) {
+            // Allow targets to remove their own bounty if they have permission
+            BountyManager.removeBountyWithCleanup(target.getUniqueId(), player);
+            player.sendMessage(ChatColor.YELLOW + "You have removed the bounty on yourself.");
         } else {
             player.sendMessage(ChatColor.RED + "You can only remove bounties that you placed!");
         }
+        return true;
+    }
+    
+    private boolean handleAdminRemoveBounty(Player player, String[] args) {
+        if (!player.hasPermission("bountyhunter.admin")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
+            return true;
+        }
+        
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.RED + "Usage: /bounty adminremove <player>");
+            return true;
+        }
+        
+        String targetName = args[1];
+        Player target = Bukkit.getPlayer(targetName);
+        
+        // Check if target is online or offline
+        if (target == null) {
+            // Target is offline, try to find by name
+            UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
+            if (targetUUID == null) {
+                player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+                return true;
+            }
+            
+            if (!BountyManager.hasBounty(targetUUID)) {
+                player.sendMessage(ChatColor.RED + "No bounty exists on " + targetName + ".");
+                return true;
+            }
+            
+            BountyManager.removeBountyOffline(targetUUID, player);
+            player.sendMessage(ChatColor.GREEN + "Admin removed bounty on " + targetName + ".");
+            return true;
+        }
+        
+        if (!BountyManager.hasBounty(target.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "No bounty exists on " + target.getName() + ".");
+            return true;
+        }
+        
+        BountyManager.removeBountyWithCleanup(target.getUniqueId(), player);
+        player.sendMessage(ChatColor.GREEN + "Admin removed bounty on " + target.getName() + ".");
         return true;
     }
     

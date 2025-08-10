@@ -2,6 +2,7 @@ package com.jared.bountyhunter;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
@@ -189,6 +190,22 @@ public class PlayerModeManager {
     
     private static void removeHunterEffects(Player hunter) {
         hunter.removePotionEffect(PotionEffectType.NIGHT_VISION);
+        
+        // Remove tracking tools (compass and spyglass)
+        removeTrackingTools(hunter);
+    }
+    
+    private static void removeTrackingTools(Player hunter) {
+        // Remove compass
+        hunter.getInventory().remove(Material.COMPASS);
+        
+        // Remove spyglass if available in this version
+        try {
+            Material spyglass = Material.valueOf("SPYGLASS");
+            hunter.getInventory().remove(spyglass);
+        } catch (IllegalArgumentException e) {
+            // Spyglass not available in this version, skip it
+        }
     }
     
     private static void removeTargetEffects(Player target) {

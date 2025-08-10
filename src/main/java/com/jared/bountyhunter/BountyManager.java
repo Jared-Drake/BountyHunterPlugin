@@ -80,6 +80,94 @@ public class BountyManager {
         BountyDataManager.removeBounty(targetUUID);
     }
     
+    /**
+     * Removes a bounty and handles all cleanup including refunds and mode clearing
+     */
+    public static void removeBountyWithCleanup(UUID targetUUID, Player remover) {
+        BountyData bounty = bounties.get(targetUUID);
+        if (bounty == null) {
+            return;
+        }
+        
+        // Check if bounty is accepted and clear hunter mode if needed
+        if (bounty.isAccepted()) {
+            UUID hunterUUID = bounty.getHunterUUID();
+            Player hunter = Bukkit.getPlayer(hunterUUID);
+            if (hunter != null) {
+                // Clear hunter mode and remove effects
+                PlayerModeManager.clearHunterMode(hunter);
+            }
+        }
+        
+        // Refund currency to the person who placed the bounty
+        Player placedBy = Bukkit.getPlayer(bounty.getPlacedByUUID());
+        if (placedBy != null) {
+            giveCurrency(placedBy, bounty.getCurrency(), bounty.getAmount());
+            String currencyName = getCurrencyName(bounty.getCurrency());
+            placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
+                currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been refunded to you!");
+        }
+        
+        // Remove the bounty
+        bounties.remove(targetUUID);
+        BountyDataManager.removeBounty(targetUUID);
+        
+        // Notify the remover
+        String targetName = PlayerDataManager.getPlayerName(targetUUID);
+        if (targetName == null) targetName = "Unknown";
+        String currencyName = getCurrencyName(bounty.getCurrency());
+        remover.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
+            currencyName + (bounty.getAmount() > 1 ? "s" : "") + " removed from " + targetName + "!");
+        
+        // Broadcast the removal
+        Bukkit.broadcastMessage(ChatColor.YELLOW + remover.getName() + " removed the bounty on " + targetName + 
+            " of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + "!");
+    }
+    
+    /**
+     * Removes a bounty when the target is offline (for admin commands or special cases)
+     */
+    public static void removeBountyOffline(UUID targetUUID, Player remover) {
+        BountyData bounty = bounties.get(targetUUID);
+        if (bounty == null) {
+            return;
+        }
+        
+        // Check if bounty is accepted and clear hunter mode if needed
+        if (bounty.isAccepted()) {
+            UUID hunterUUID = bounty.getHunterUUID();
+            Player hunter = Bukkit.getPlayer(hunterUUID);
+            if (hunter != null) {
+                // Clear hunter mode and remove effects
+                PlayerModeManager.clearHunterMode(hunter);
+            }
+        }
+        
+        // Refund currency to the person who placed the bounty
+        Player placedBy = Bukkit.getPlayer(bounty.getPlacedByUUID());
+        if (placedBy != null) {
+            giveCurrency(placedBy, bounty.getCurrency(), bounty.getAmount());
+            String currencyName = getCurrencyName(bounty.getCurrency());
+            placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
+                currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been refunded to you!");
+        }
+        
+        // Remove the bounty
+        bounties.remove(targetUUID);
+        BountyDataManager.removeBounty(targetUUID);
+        
+        // Notify the remover
+        String targetName = PlayerDataManager.getPlayerName(targetUUID);
+        if (targetName == null) targetName = "Unknown";
+        String currencyName = getCurrencyName(bounty.getCurrency());
+        remover.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
+            currencyName + (bounty.getAmount() > 1 ? "s" : "") + " removed from " + targetName + "!");
+        
+        // Broadcast the removal
+        Bukkit.broadcastMessage(ChatColor.YELLOW + remover.getName() + " removed the bounty on " + targetName + 
+            " of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + "!");
+    }
+    
     public static void claimBounty(Player killer, Player killed) {
         UUID killedUUID = killed.getUniqueId();
         if (!bounties.containsKey(killedUUID)) {
