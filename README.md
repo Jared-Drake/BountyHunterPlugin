@@ -10,6 +10,7 @@ A comprehensive Minecraft bounty hunting plugin with GUI interface, hunter/targe
 - **Offline Support**: Place bounties on players who have previously joined
 - **24-Hour Cooldown**: Prevents bounty spam after claims
 - **Data Persistence**: Survives server restarts and crashes
+- **Persistent Bounties**: Bounties only expire when the hunter kills the target, not from environmental deaths or suicide
 
 ### ⚔️ **Hunter & Target Modes**
 - **Exclusive Hunting**: Accept bounties to become the designated hunter
@@ -47,6 +48,7 @@ A comprehensive Minecraft bounty hunting plugin with GUI interface, hunter/targe
 - **No Speed Effects**: Balanced gameplay without movement advantages  
 - **Enhanced Tracking**: Skill-based hunting with proper tools
 - **Cooldown Commands**: Check and manage cooldowns (admin can clear)
+- **Persistent Bounties**: Bounties remain active until properly claimed by the hunter
 
 ## 🔧 Installation
 
@@ -71,7 +73,7 @@ A comprehensive Minecraft bounty hunting plugin with GUI interface, hunter/targe
 
 ## 🔄 Version History
 
-- **v2.1**: Hunter/target modes, enhanced tracking, 24-hour cooldowns, reverse bounties
+- **v2.1**: Hunter/target modes, enhanced tracking, 24-hour cooldowns, reverse bounties, persistent bounties
 - **v2.0**: GUI interface, multiple currencies, bounty acceptance system
 - **v1.0**: Original command-based version
 
@@ -82,5 +84,22 @@ A comprehensive Minecraft bounty hunting plugin with GUI interface, hunter/targe
 - **Smart Protection**: Cooldowns prevent harassment
 - **Rich Tracking**: Real-time updates with tools and notifications
 - **Fair Play**: Targets can fight back and claim bounties themselves
+- **Persistent Bounties**: Bounties don't disappear from environmental deaths or suicide - only when properly claimed
+
+## ⚠️ Important Bounty Behavior
+
+**Bounties are persistent and only expire when:**
+- The **hunter kills the target** (normal completion)
+- The **target kills the hunter** (reverse bounty)
+- The bounty is **manually removed** by the placer
+- The bounty is **abandoned** by the hunter
+
+**Bounties do NOT expire from:**
+- Environmental deaths (falling, drowning, etc.)
+- Suicide
+- Being killed by someone other than the hunter
+- Server restarts or crashes
+
+This ensures that bounties remain active until properly resolved through PvP combat between the hunter and target.
 
 Perfect for PvP servers wanting structured bounty hunting without exploits!

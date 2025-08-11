@@ -17,26 +17,24 @@ public class BountyListener implements Listener {
         Player victim = event.getEntity();
         Player killer = victim.getKiller();
 
-        // If there's no killer (environmental death), check if victim had a bounty and remove it
+        // If there's no killer (environmental death), bounty stays active
         if (killer == null) {
             if (BountyManager.hasBounty(victim.getUniqueId())) {
                 BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
-                BountyManager.removeBounty(victim.getUniqueId());
                 String currencyName = getCurrencyName(bounty.getCurrency());
-                Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + " died without a killer! " +
-                    "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been lost!");
+                Bukkit.broadcastMessage(ChatColor.YELLOW + victim.getName() + " died without a killer! " +
+                    "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " remains active!");
             }
             return;
         }
 
-        // Check if killer is the same as victim (suicide)
+        // Check if killer is the same as victim (suicide) - bounty stays active
         if (killer.equals(victim)) {
             if (BountyManager.hasBounty(victim.getUniqueId())) {
                 BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
-                BountyManager.removeBounty(victim.getUniqueId());
                 String currencyName = getCurrencyName(bounty.getCurrency());
-                Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + " committed suicide! " +
-                    "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been lost!");
+                Bukkit.broadcastMessage(ChatColor.YELLOW + victim.getName() + " committed suicide! " +
+                    "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " remains active!");
             }
             return;
         }
@@ -54,8 +52,21 @@ public class BountyListener implements Listener {
 
         // Check normal bounty scenario: hunter kills target
         if (BountyManager.hasBounty(victim.getUniqueId())) {
-            // Award the bounty to the killer (normal case)
-            BountyManager.claimBounty(killer, victim);
+            // Only award the bounty if the killer is the accepted hunter
+            BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
+            if (bounty.isAccepted() && bounty.getHunterUUID().equals(killer.getUniqueId())) {
+                // Hunter successfully killed their target - award the bounty
+                BountyManager.claimBounty(killer, victim);
+            } else if (!bounty.isAccepted()) {
+                // Bounty not accepted yet - award to whoever killed them
+                BountyManager.claimBounty(killer, victim);
+            } else {
+                // Someone else killed the target - bounty remains active
+                String currencyName = getCurrencyName(bounty.getCurrency());
+                Bukkit.broadcastMessage(ChatColor.YELLOW + victim.getName() + " was killed by " + killer.getName() + 
+                    " but the bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + 
+                    " remains active for " + bounty.getHunterName() + "!");
+            }
             return;
         }
     }
