@@ -21,6 +21,9 @@ public class BountyCommand implements CommandExecutor {
 
         if (args.length < 1) {
             player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track|cooldown|adminremove> [player] [currency] [amount]");
+                            player.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' to track your target or hunter!");
+                player.sendMessage(ChatColor.GRAY + "💡 Hunters: Compass tracking limited to 1000 blocks");
+                player.sendMessage(ChatColor.GRAY + "💡 Targets: Unlimited tracking range to help you survive!");
             return true;
         }
 
@@ -48,6 +51,17 @@ public class BountyCommand implements CommandExecutor {
                 return handleCooldownCommand(player, args);
             default:
                 player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, track, cooldown, or adminremove");
+                player.sendMessage(ChatColor.YELLOW + "=== Bounty Hunter Commands ===");
+                player.sendMessage(ChatColor.GRAY + "• /bounty gui - Open the bounty management GUI");
+                player.sendMessage(ChatColor.GRAY + "• /bounty set <player> <currency> <amount> - Set a bounty on a player");
+                player.sendMessage(ChatColor.GRAY + "• /bounty list - List all active bounties");
+                player.sendMessage(ChatColor.GRAY + "• /bounty remove <player> - Remove a bounty (if you placed it)");
+                player.sendMessage(ChatColor.GRAY + "• /bounty accept <player> - Accept a bounty on a player");
+                player.sendMessage(ChatColor.GRAY + "• /bounty abandon - Abandon your accepted bounty");
+                player.sendMessage(ChatColor.GRAY + "• /bounty status - Check your bounty status");
+                player.sendMessage(ChatColor.GRAY + "• /bounty track - Track your target or hunter (Hunters: 1000 block limit, Targets: Unlimited)");
+                player.sendMessage(ChatColor.GRAY + "• /bounty cooldown [player] - Check bounty cooldowns");
+                player.sendMessage(ChatColor.GRAY + "• /bounty adminremove <player> - Admin: Remove any bounty");
                 return true;
         }
     }
@@ -322,15 +336,55 @@ public class BountyCommand implements CommandExecutor {
     }
     
     private boolean handleTrackCommand(Player player) {
-        if (!PlayerModeManager.isHunter(player)) {
-            player.sendMessage(ChatColor.RED + "❌ You must be in hunter mode to use enhanced tracking!");
-            player.sendMessage(ChatColor.GRAY + "💡 Accept a bounty first to enter hunter mode.");
-            return true;
+        if (PlayerModeManager.isHunter(player)) {
+            // Hunter tracking - check if target is within range first
+            Player target = PlayerModeManager.getHunterTarget(player);
+            if (target != null && target.isOnline()) {
+                double distance = player.getLocation().distance(target.getLocation());
+                if (distance <= 1000) {
+                    // Target is within tracking range - use enhanced tracking info
+                    String trackingInfo = EnhancedTracker.getDetailedTrackingInfo(player);
+                    player.sendMessage(trackingInfo);
+                } else {
+                    // Target is beyond tracking range
+                    player.sendMessage(ChatColor.YELLOW + "=== Target Tracking Info ===");
+                    player.sendMessage(ChatColor.RED + "❌ " + target.getName() + " is beyond tracking range!");
+                    player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + String.format("%.0f", distance) + " blocks");
+                    player.sendMessage(ChatColor.YELLOW + "💡 Move within 1000 blocks to activate compass tracking!");
+                    player.sendMessage(ChatColor.GRAY + "💡 Your compass will automatically update when in range!");
+                }
+            } else {
+                player.sendMessage(ChatColor.RED + "❌ Your target is currently offline.");
+                player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while target is offline.");
+            }
+        } else if (PlayerModeManager.isTarget(player)) {
+            // Target tracking - show hunter location info
+            Player hunter = PlayerModeManager.getTargetHunter(player);
+            if (hunter != null && hunter.isOnline()) {
+                // Update compass to point to hunter
+                player.setCompassTarget(hunter.getLocation());
+                
+                // Calculate distance and direction
+                double distance = player.getLocation().distance(hunter.getLocation());
+                String distanceStr = String.format("%.1f", distance);
+                String direction = getDirection(player.getLocation(), hunter.getLocation());
+                
+                player.sendMessage(ChatColor.YELLOW + "=== Hunter Tracking Info ===");
+                player.sendMessage(ChatColor.GREEN + "🧭 Compass pointing to " + hunter.getName() + "!");
+                player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
+                player.sendMessage(ChatColor.GRAY + "Direction: " + ChatColor.WHITE + direction);
+                player.sendMessage(ChatColor.YELLOW + "⚠ " + hunter.getName() + " is hunting you!");
+                player.sendMessage(ChatColor.GREEN + "💡 You have unlimited tracking range to help you survive!");
+                player.sendMessage(ChatColor.GRAY + "💡 Your hunter's compass tracking is limited to 1000 blocks!");
+                player.sendMessage(ChatColor.GRAY + "💡 Use your compass to track the hunter's location!");
+            } else {
+                player.sendMessage(ChatColor.RED + "❌ Your hunter is currently offline.");
+                player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while hunter is offline.");
+            }
+        } else {
+            player.sendMessage(ChatColor.RED + "❌ You must be in hunter or target mode to use tracking!");
+            player.sendMessage(ChatColor.GRAY + "💡 Accept a bounty to enter hunter mode, or have a bounty placed on you to enter target mode.");
         }
-        
-        // Use enhanced tracking info
-        String trackingInfo = EnhancedTracker.getDetailedTrackingInfo(player);
-        player.sendMessage(trackingInfo);
         
         return true;
     }
@@ -397,6 +451,7 @@ public class BountyCommand implements CommandExecutor {
         player.sendMessage(ChatColor.GRAY + "Commands:");
         player.sendMessage(ChatColor.GRAY + "• /bounty cooldown <player> - Check specific player");
         player.sendMessage(ChatColor.GRAY + "• /bounty cooldown list - List all cooldowns");
+        player.sendMessage(ChatColor.GRAY + "• /bounty track - Track your target or hunter");
         
         return true;
     }

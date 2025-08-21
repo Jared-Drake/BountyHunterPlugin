@@ -378,21 +378,27 @@ public class BountyGUIListener implements Listener {
                     if (targetName == null) targetName = "Unknown";
                     
                     if (target != null && target.isOnline()) {
-                        player.setCompassTarget(target.getLocation());
-                        
-                        // Calculate distance and direction
+                        // Calculate distance and check if within tracking range
                         double distance = player.getLocation().distance(target.getLocation());
                         String distanceStr = String.format("%.1f", distance);
                         
-                        player.sendMessage(ChatColor.GREEN + "🧭 Compass now pointing to " + target.getName() + "!");
-                        player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
-                        
-                        // Check if both are in hunter/target mode
-                        if (PlayerModeManager.isHunter(player) && PlayerModeManager.isTarget(target)) {
-                            player.sendMessage(ChatColor.YELLOW + "⚔ Hunt is active - both players in combat mode!");
+                        if (distance <= 1000) {
+                            player.setCompassTarget(target.getLocation());
+                            player.sendMessage(ChatColor.GREEN + "🧭 Compass now pointing to " + target.getName() + "!");
+                            player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
+                            
+                            // Check if both are in hunter/target mode
+                            if (PlayerModeManager.isHunter(player) && PlayerModeManager.isTarget(target)) {
+                                player.sendMessage(ChatColor.YELLOW + "⚔ Hunt is active - both players in combat mode!");
+                            }
+                            
+                            player.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' for detailed tracking info!");
+                            player.sendMessage(ChatColor.GRAY + "💡 Targets can also use '/bounty track' to track their hunter!");
+                        } else {
+                            player.sendMessage(ChatColor.RED + "❌ " + target.getName() + " is too far away (" + distanceStr + " blocks)");
+                            player.sendMessage(ChatColor.YELLOW + "💡 Move within 1000 blocks to activate compass tracking!");
+                            player.sendMessage(ChatColor.GRAY + "💡 Use '/bounty track' for distance information!");
                         }
-                        
-                        player.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' for detailed tracking info!");
                     } else {
                         player.sendMessage(ChatColor.RED + "❌ " + targetName + " is currently offline.");
                         player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while target is offline.");

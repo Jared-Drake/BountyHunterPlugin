@@ -100,6 +100,10 @@ public class BountyListener implements Listener {
                 Player hunter = Bukkit.getPlayer(bounty.getHunterUUID());
                 if (hunter != null) {
                     PlayerModeManager.setHunterMode(hunter, player);
+                    // Update target's compass to point to hunter
+                    player.setCompassTarget(hunter.getLocation());
+                    player.sendMessage(ChatColor.GREEN + "🧭 Your compass now points to " + hunter.getName() + "!");
+                    player.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' to get detailed tracking info on your hunter!");
                 }
             }
         }

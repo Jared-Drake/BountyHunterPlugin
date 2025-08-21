@@ -54,20 +54,32 @@ public class EnhancedTracker {
         Location hunterLoc = hunter.getLocation();
         Location targetLoc = target.getLocation();
         
-        // Update compass
-        hunter.setCompassTarget(targetLoc);
-        
         // Calculate tracking data
         double distance = hunterLoc.distance(targetLoc);
         String direction = getDirection(hunterLoc, targetLoc);
         boolean sameDimension = hunterLoc.getWorld().equals(targetLoc.getWorld());
         
-        // Update tracking data
-        data.updateData(distance, direction, sameDimension, target.getName());
-        
-        // Send periodic updates
-        if (data.shouldSendUpdate()) {
-            sendTrackingUpdate(hunter, data);
+        // Only update compass if within 1000 blocks
+        if (distance <= 1000) {
+            // Update compass
+            hunter.setCompassTarget(targetLoc);
+            
+            // Update tracking data
+            data.updateData(distance, direction, sameDimension, target.getName());
+            
+            // Send periodic updates
+            if (data.shouldSendUpdate()) {
+                sendTrackingUpdate(hunter, data);
+            }
+        } else {
+            // Target is beyond tracking range - don't update compass
+            data.updateData(distance, direction, sameDimension, target.getName());
+            
+            // Send occasional out-of-range notifications
+            if (data.shouldSendUpdate() && Math.random() < 0.1) { // 10% chance every update cycle
+                hunter.sendMessage(ChatColor.GRAY + "🗺️ " + target.getName() + " is beyond tracking range (" + String.format("%.0f", distance) + " blocks away)");
+                hunter.sendMessage(ChatColor.YELLOW + "💡 Move within 1000 blocks to activate compass tracking!");
+            }
         }
         
         // Give tracking items if hunter doesn't have them
@@ -187,14 +199,20 @@ public class EnhancedTracker {
         info.append(ChatColor.GRAY).append("Direction: ").append(ChatColor.WHITE).append(direction).append("\n");
         info.append(ChatColor.GRAY).append("World: ").append(ChatColor.WHITE).append(targetLoc.getWorld().getName()).append("\n");
         
-        // Add proximity warning
+        // Add proximity warning and tracking range info
         if (distance <= 25) {
             info.append(ChatColor.RED).append("⚠ Target is very close - prepare for combat!\n");
         } else if (distance <= 100) {
             info.append(ChatColor.YELLOW).append("🔍 Target is in tracking range\n");
         }
         
-        info.append(ChatColor.GRAY).append("Use your compass and spyglass for navigation!");
+        if (distance <= 1000) {
+            info.append(ChatColor.GREEN).append("🧭 Compass tracking is active\n");
+            info.append(ChatColor.GRAY).append("Use your compass and spyglass for navigation!");
+        } else {
+            info.append(ChatColor.RED).append("❌ Target is beyond compass tracking range\n");
+            info.append(ChatColor.YELLOW).append("💡 Move within 1000 blocks to activate compass tracking!");
+        }
         
         return info.toString();
     }

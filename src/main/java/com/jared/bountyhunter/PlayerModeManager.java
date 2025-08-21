@@ -111,6 +111,9 @@ public class PlayerModeManager {
             
             // Remove effects
             removeTargetEffects(target);
+            // Clear target's compass tracking
+            target.setCompassTarget(target.getWorld().getSpawnLocation());
+            
             if (hunter != null) {
                 removeHunterEffects(hunter);
                 // Clear compass tracking

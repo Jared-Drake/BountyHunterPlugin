@@ -330,6 +330,12 @@ public class BountyManager {
         if (target != null) {
             target.sendMessage(ChatColor.RED + "⚠ " + hunter.getName() + " is now hunting you for the bounty!");
             
+            // Give target a compass to track the bounty hunter
+            target.setCompassTarget(hunter.getLocation());
+            target.sendMessage(ChatColor.GREEN + "🧭 Your compass now points to " + hunter.getName() + "!");
+            target.sendMessage(ChatColor.YELLOW + "💡 Use your compass to track the bounty hunter's location!");
+            target.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' for detailed tracking info on your hunter!");
+            
             // Activate hunter/target modes if both players are online
             PlayerModeManager.setHunterMode(hunter, target);
         }
@@ -365,7 +371,10 @@ public class BountyManager {
             ". The bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " is now available again!");
         
         if (target != null) {
+            // Clear the target's compass tracking
+            target.setCompassTarget(target.getWorld().getSpawnLocation());
             target.sendMessage(ChatColor.YELLOW + hunter.getName() + " is no longer hunting you. The bounty is available again.");
+            target.sendMessage(ChatColor.GRAY + "🧭 Your compass has been reset to world spawn.");
         }
     }
     
