@@ -2,16 +2,21 @@ package com.jared.bountyhunter;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
+import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.economy.EconomyResponse;
 
 import java.util.HashMap;
 import java.util.UUID;
 
 public class BountyManager {
     private static HashMap<UUID, BountyData> bounties = new HashMap<>();
+    private static Economy economy;
+    
+    public static void setEconomy(Economy econ) {
+        economy = econ;
+    }
     
     public static void loadBountiesFromFile() {
         bounties = BountyDataManager.loadBounties();
@@ -29,11 +34,11 @@ public class BountyManager {
         return bounties.get(playerUUID);
     }
     
-    public static boolean setBounty(Player target, Player placedBy, BountyData.CurrencyType currency, int amount) {
-        return setBounty(target.getUniqueId(), target.getName(), placedBy, currency, amount);
+    public static boolean setBounty(Player target, Player placedBy, double amount) {
+        return setBounty(target.getUniqueId(), target.getName(), placedBy, amount);
     }
     
-    public static boolean setBounty(UUID targetUUID, String targetName, Player placedBy, BountyData.CurrencyType currency, int amount) {
+    public static boolean setBounty(UUID targetUUID, String targetName, Player placedBy, double amount) {
         // Check if target is on cooldown
         if (BountyCooldownManager.isOnCooldown(targetUUID)) {
             long remainingTime = BountyCooldownManager.getRemainingCooldown(targetUUID);
@@ -44,33 +49,35 @@ public class BountyManager {
             return false;
         }
         
-        // Check if player has enough of the currency
-        if (!hasEnoughCurrency(placedBy, currency, amount)) {
-            placedBy.sendMessage(ChatColor.RED + "You don't have enough " + getCurrencyName(currency) + "s!");
+        // Check if player has enough money
+        if (!hasEnoughMoney(placedBy, amount)) {
+            placedBy.sendMessage(ChatColor.RED + "You don't have enough money! You need $" + String.format("%.2f", amount));
             return false;
         }
         
-        // Remove currency from player
-        removeCurrency(placedBy, currency, amount);
+        // Remove money from player
+        if (!removeMoney(placedBy, amount)) {
+            placedBy.sendMessage(ChatColor.RED + "Failed to process payment! Please try again.");
+            return false;
+        }
         
         // Create and store bounty
         BountyData bounty = new BountyData(targetUUID, placedBy.getUniqueId(), 
-            placedBy.getName(), currency, amount);
+            placedBy.getName(), amount);
         bounties.put(targetUUID, bounty);
         
         // Save bounty to file
         BountyDataManager.saveBounty(targetUUID, bounty);
         
         // Notify players
-        placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + amount + " " + getCurrencyName(currency) + 
-            (amount > 1 ? "s" : "") + " placed on " + targetName + "!");
+        placedBy.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", amount) + " placed on " + targetName + "!");
         
         // Check if target is online for notification
         Player onlineTarget = Bukkit.getPlayer(targetUUID);
         String onlineStatus = onlineTarget != null ? "" : " (offline)";
         
-        Bukkit.broadcastMessage(ChatColor.GOLD + placedBy.getName() + " placed a bounty of " + 
-            amount + " " + getCurrencyName(currency) + (amount > 1 ? "s" : "") + " on " + targetName + onlineStatus + "!");
+        Bukkit.broadcastMessage(ChatColor.GOLD + placedBy.getName() + " placed a bounty of $" + 
+            String.format("%.2f", amount) + " on " + targetName + onlineStatus + "!");
         
         return true;
     }
@@ -99,13 +106,14 @@ public class BountyManager {
             }
         }
         
-        // Refund currency to the person who placed the bounty
+        // Refund money to the person who placed the bounty
         Player placedBy = Bukkit.getPlayer(bounty.getPlacedByUUID());
         if (placedBy != null) {
-            giveCurrency(placedBy, bounty.getCurrency(), bounty.getAmount());
-            String currencyName = getCurrencyName(bounty.getCurrency());
-            placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
-                currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been refunded to you!");
+            if (giveMoney(placedBy, bounty.getAmount())) {
+                placedBy.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", bounty.getAmount()) + " has been refunded to you!");
+            } else {
+                placedBy.sendMessage(ChatColor.RED + "Failed to refund bounty money! Contact an administrator.");
+            }
         }
         
         // Remove the bounty
@@ -115,13 +123,11 @@ public class BountyManager {
         // Notify the remover
         String targetName = PlayerDataManager.getPlayerName(targetUUID);
         if (targetName == null) targetName = "Unknown";
-        String currencyName = getCurrencyName(bounty.getCurrency());
-        remover.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
-            currencyName + (bounty.getAmount() > 1 ? "s" : "") + " removed from " + targetName + "!");
+        remover.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", bounty.getAmount()) + " removed from " + targetName + "!");
         
         // Broadcast the removal
         Bukkit.broadcastMessage(ChatColor.YELLOW + remover.getName() + " removed the bounty on " + targetName + 
-            " of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + "!");
+            " of $" + String.format("%.2f", bounty.getAmount()) + "!");
     }
     
     /**
@@ -143,13 +149,14 @@ public class BountyManager {
             }
         }
         
-        // Refund currency to the person who placed the bounty
+        // Refund money to the person who placed the bounty
         Player placedBy = Bukkit.getPlayer(bounty.getPlacedByUUID());
         if (placedBy != null) {
-            giveCurrency(placedBy, bounty.getCurrency(), bounty.getAmount());
-            String currencyName = getCurrencyName(bounty.getCurrency());
-            placedBy.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
-                currencyName + (bounty.getAmount() > 1 ? "s" : "") + " has been refunded to you!");
+            if (giveMoney(placedBy, bounty.getAmount())) {
+                placedBy.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", bounty.getAmount()) + " has been refunded to you!");
+            } else {
+                placedBy.sendMessage(ChatColor.RED + "Failed to refund bounty money! Contact an administrator.");
+            }
         }
         
         // Remove the bounty
@@ -159,13 +166,11 @@ public class BountyManager {
         // Notify the remover
         String targetName = PlayerDataManager.getPlayerName(targetUUID);
         if (targetName == null) targetName = "Unknown";
-        String currencyName = getCurrencyName(bounty.getCurrency());
-        remover.sendMessage(ChatColor.GREEN + "Bounty of " + bounty.getAmount() + " " + 
-            currencyName + (bounty.getAmount() > 1 ? "s" : "") + " removed from " + targetName + "!");
+        remover.sendMessage(ChatColor.GREEN + "Bounty of $" + String.format("%.2f", bounty.getAmount()) + " removed from " + targetName + "!");
         
         // Broadcast the removal
         Bukkit.broadcastMessage(ChatColor.YELLOW + remover.getName() + " removed the bounty on " + targetName + 
-            " of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + "!");
+            " of $" + String.format("%.2f", bounty.getAmount()) + "!");
     }
     
     public static void claimBounty(Player killer, Player killed) {
@@ -188,22 +193,22 @@ public class BountyManager {
             PlayerModeManager.clearHunterMode(killer);
         }
         
-        // Give currency to killer
-        giveCurrency(killer, bounty.getCurrency(), bounty.getAmount());
-        
-        // Notify players
-        String claimMessage = bounty.isAccepted() ? 
-            "You successfully completed your accepted bounty of " : 
-            "You claimed an unaccepted bounty of ";
-        killer.sendMessage(ChatColor.GREEN + claimMessage + bounty.getAmount() + " " + 
-            getCurrencyName(bounty.getCurrency()) + (bounty.getAmount() > 1 ? "s" : "") + " for killing " + killed.getName() + "!");
-        
-        String broadcastMessage = bounty.isAccepted() ?
-            killer.getName() + " completed their bounty hunt and claimed " :
-            killer.getName() + " claimed a bounty of ";
-        Bukkit.broadcastMessage(ChatColor.GOLD + broadcastMessage + 
-            bounty.getAmount() + " " + getCurrencyName(bounty.getCurrency()) + (bounty.getAmount() > 1 ? "s" : "") + 
-            " for killing " + killed.getName() + "!");
+        // Give money to killer
+        if (giveMoney(killer, bounty.getAmount())) {
+            // Notify players
+            String claimMessage = bounty.isAccepted() ? 
+                "You successfully completed your accepted bounty of $" : 
+                "You claimed an unaccepted bounty of $";
+            killer.sendMessage(ChatColor.GREEN + claimMessage + String.format("%.2f", bounty.getAmount()) + " for killing " + killed.getName() + "!");
+            
+            String broadcastMessage = bounty.isAccepted() ?
+                killer.getName() + " completed their bounty hunt and claimed $" :
+                killer.getName() + " claimed a bounty of $";
+            Bukkit.broadcastMessage(ChatColor.GOLD + broadcastMessage + 
+                String.format("%.2f", bounty.getAmount()) + " for killing " + killed.getName() + "!");
+        } else {
+            killer.sendMessage(ChatColor.RED + "Failed to give bounty reward! Contact an administrator.");
+        }
         
         // Add 24-hour cooldown for the killed player
         BountyCooldownManager.addCooldown(killedUUID);
@@ -229,24 +234,24 @@ public class BountyManager {
         // Clear hunter/target modes since the hunt is over
         PlayerModeManager.clearTargetMode(target);
         
-        // Give currency to target (they survived and killed their hunter!)
-        giveCurrency(target, bounty.getCurrency(), bounty.getAmount());
-        
-        // Notify players with special messages for reverse bounty
-        target.sendMessage(ChatColor.GREEN + "⚔ " + ChatColor.BOLD + "BOUNTY DEFENSE SUCCESSFUL!" + ChatColor.GREEN + 
-            " You killed your hunter and claimed " + bounty.getAmount() + " " + 
-            getCurrencyName(bounty.getCurrency()) + (bounty.getAmount() > 1 ? "s" : "") + "!");
-        
-        // Special title for target who survived
-        target.sendTitle(ChatColor.GOLD + "⚔ BOUNTY DEFENDED ⚔", 
-                        ChatColor.GREEN + "You killed your hunter!", 10, 70, 20);
-        
-        // Play victory sound
-        target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-        
-        Bukkit.broadcastMessage(ChatColor.GOLD + "⚔ " + target.getName() + " defended against their bounty hunter " + 
-            deadHunter.getName() + " and claimed the " + bounty.getAmount() + " " + 
-            getCurrencyName(bounty.getCurrency()) + (bounty.getAmount() > 1 ? "s" : "") + " bounty!");
+        // Give money to target (they survived and killed their hunter!)
+        if (giveMoney(target, bounty.getAmount())) {
+            // Notify players with special messages for reverse bounty
+            target.sendMessage(ChatColor.GREEN + "⚔ " + ChatColor.BOLD + "BOUNTY DEFENSE SUCCESSFUL!" + ChatColor.GREEN + 
+                " You killed your hunter and claimed $" + String.format("%.2f", bounty.getAmount()) + "!");
+            
+            // Special title for target who survived
+            target.sendTitle(ChatColor.GOLD + "⚔ BOUNTY DEFENDED ⚔", 
+                            ChatColor.GREEN + "You killed your hunter!", 10, 70, 20);
+            
+            // Play victory sound
+            target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            
+            Bukkit.broadcastMessage(ChatColor.GOLD + "⚔ " + target.getName() + " defended against their bounty hunter " + 
+                deadHunter.getName() + " and claimed the $" + String.format("%.2f", bounty.getAmount()) + " bounty!");
+        } else {
+            target.sendMessage(ChatColor.RED + "Failed to give bounty reward! Contact an administrator.");
+        }
         
         // Add 24-hour cooldown for the target (they successfully defended)
         BountyCooldownManager.addCooldown(targetUUID);
@@ -256,55 +261,28 @@ public class BountyManager {
         BountyDataManager.removeBounty(targetUUID);
     }
     
-    private static boolean hasEnoughCurrency(Player player, BountyData.CurrencyType currency, int amount) {
-        Material material = getCurrencyMaterial(currency);
-        int count = 0;
-        
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == material) {
-                count += item.getAmount();
-            }
+    private static boolean hasEnoughMoney(Player player, double amount) {
+        if (economy == null) {
+            player.sendMessage(ChatColor.RED + "Economy system not available!");
+            return false;
         }
-        
-        return count >= amount;
+        return economy.has(player, amount);
     }
     
-    private static void removeCurrency(Player player, BountyData.CurrencyType currency, int amount) {
-        Material material = getCurrencyMaterial(currency);
-        int remaining = amount;
-        
-        ItemStack[] contents = player.getInventory().getContents();
-        for (int i = 0; i < contents.length && remaining > 0; i++) {
-            ItemStack item = contents[i];
-            if (item != null && item.getType() == material) {
-                int toRemove = Math.min(remaining, item.getAmount());
-                if (toRemove == item.getAmount()) {
-                    player.getInventory().setItem(i, null);
-                } else {
-                    item.setAmount(item.getAmount() - toRemove);
-                }
-                remaining -= toRemove;
-            }
+    private static boolean removeMoney(Player player, double amount) {
+        if (economy == null) {
+            return false;
         }
+        EconomyResponse response = economy.withdrawPlayer(player, amount);
+        return response.transactionSuccess();
     }
     
-    private static void giveCurrency(Player player, BountyData.CurrencyType currency, int amount) {
-        Material material = getCurrencyMaterial(currency);
-        ItemStack currencyItem = new ItemStack(material, amount);
-        player.getInventory().addItem(currencyItem);
-    }
-    
-    private static Material getCurrencyMaterial(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return Material.DIAMOND;
-            case EMERALD:
-                return Material.EMERALD;
-            case NETHERITE:
-                return Material.NETHERITE_INGOT;
-            default:
-                return Material.PAPER;
+    private static boolean giveMoney(Player player, double amount) {
+        if (economy == null) {
+            return false;
         }
+        EconomyResponse response = economy.depositPlayer(player, amount);
+        return response.transactionSuccess();
     }
     
     public static void acceptBounty(UUID targetUUID, Player hunter) {
@@ -321,10 +299,9 @@ public class BountyManager {
         // Notify players
         Player target = Bukkit.getPlayer(targetUUID);
         String targetName = target != null ? target.getName() : "Unknown";
-        String currencyName = getCurrencyName(bounty.getCurrency());
         
         hunter.sendMessage(ChatColor.GREEN + "You have accepted the bounty on " + targetName + 
-            " for " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + "!");
+            " for $" + String.format("%.2f", bounty.getAmount()) + "!");
         Bukkit.broadcastMessage(ChatColor.GOLD + hunter.getName() + " has accepted the bounty on " + targetName + "!");
         
         if (target != null) {
@@ -364,11 +341,10 @@ public class BountyManager {
         
         // Notify players
         String targetName = target != null ? target.getName() : "Unknown";
-        String currencyName = getCurrencyName(bounty.getCurrency());
         
         hunter.sendMessage(ChatColor.YELLOW + "You have abandoned the bounty on " + targetName + ".");
         Bukkit.broadcastMessage(ChatColor.YELLOW + hunter.getName() + " has abandoned the bounty on " + targetName + 
-            ". The bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " is now available again!");
+            ". The bounty of $" + String.format("%.2f", bounty.getAmount()) + " is now available again!");
         
         if (target != null) {
             // Clear the target's compass tracking
@@ -386,18 +362,5 @@ public class BountyManager {
             }
         }
         return null;
-    }
-    
-    private static String getCurrencyName(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return "Diamond";
-            case EMERALD:
-                return "Emerald";
-            case NETHERITE:
-                return "Netherite Ingot";
-            default:
-                return "Unknown";
-        }
     }
 }

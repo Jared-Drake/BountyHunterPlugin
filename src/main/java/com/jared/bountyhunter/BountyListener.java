@@ -19,27 +19,10 @@ public class BountyListener implements Listener {
 
         // If there's no killer (environmental death), bounty stays active
         if (killer == null) {
-            if (BountyManager.hasBounty(victim.getUniqueId())) {
-                BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
-                String currencyName = getCurrencyName(bounty.getCurrency());
-                Bukkit.broadcastMessage(ChatColor.YELLOW + victim.getName() + " died without a killer! " +
-                    "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " remains active!");
-            }
-            return;
+            return; // No killer (environmental death)
         }
 
-        // Check if killer is the same as victim (suicide) - bounty stays active
-        if (killer.equals(victim)) {
-            if (BountyManager.hasBounty(victim.getUniqueId())) {
-                BountyData bounty = BountyManager.getBounty(victim.getUniqueId());
-                String currencyName = getCurrencyName(bounty.getCurrency());
-                Bukkit.broadcastMessage(ChatColor.YELLOW + victim.getName() + " committed suicide! " +
-                    "Bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + " remains active!");
-            }
-            return;
-        }
-
-        // Check for reverse bounty scenario: target kills hunter
+        // Check if the victim was hunting someone (reverse bounty scenario)
         if (BountyManager.hasBounty(killer.getUniqueId())) {
             BountyData killerBounty = BountyManager.getBounty(killer.getUniqueId());
             // Check if the victim (who died) was the hunter for the killer's bounty
@@ -62,9 +45,8 @@ public class BountyListener implements Listener {
                 BountyManager.claimBounty(killer, victim);
             } else {
                 // Someone else killed the target - bounty remains active
-                String currencyName = getCurrencyName(bounty.getCurrency());
                 Bukkit.broadcastMessage(ChatColor.YELLOW + victim.getName() + " was killed by " + killer.getName() + 
-                    " but the bounty of " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + 
+                    " but the bounty of $" + String.format("%.2f", bounty.getAmount()) + 
                     " remains active for " + bounty.getHunterName() + "!");
             }
             return;
@@ -81,14 +63,12 @@ public class BountyListener implements Listener {
         // Check if this player has a bounty
         if (BountyManager.hasBounty(player.getUniqueId())) {
             BountyData bounty = BountyManager.getBounty(player.getUniqueId());
-            String currencyName = getCurrencyName(bounty.getCurrency());
             
             // Notify the player and server about their bounty
             String hunterInfo = bounty.isAccepted() ? 
                 " and is being hunted by " + bounty.getHunterName() : "";
-            player.sendMessage(ChatColor.RED + "⚠ WARNING: You have an active bounty of " + 
-                bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + 
-                " placed by " + bounty.getPlacedBy() + hunterInfo + "!");
+            player.sendMessage(ChatColor.RED + "⚠ WARNING: You have an active bounty of $" + 
+                String.format("%.2f", bounty.getAmount()) + " placed by " + bounty.getPlacedBy() + hunterInfo + "!");
             
             String broadcastMessage = bounty.isAccepted() ?
                 player.getName() + " has joined with an active bounty (being hunted by " + bounty.getHunterName() + ")!" :
@@ -125,18 +105,5 @@ public class BountyListener implements Listener {
         
         // Clean up any hunter/target modes when player disconnects
         PlayerModeManager.handlePlayerDisconnect(player);
-    }
-    
-    private String getCurrencyName(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return "Diamond";
-            case EMERALD:
-                return "Emerald";
-            case NETHERITE:
-                return "Netherite Ingot";
-            default:
-                return "Unknown";
-        }
     }
 }

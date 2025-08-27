@@ -34,10 +34,10 @@ public class BountyGUIListener implements Listener {
             event.setCancelled(true);
             handleSetBountyMenuClick(player, event.getSlot(), title);
         }
-        // Handle currency amount selection menu (online and offline)
-        else if (title.contains("Select") && title.contains("Amount")) {
+        // Handle custom amount selection menu (online and offline)
+        else if (title.contains("Custom Bounty Amount")) {
             event.setCancelled(true);
-            handleCurrencyAmountMenuClick(player, event.getSlot(), title);
+            handleCustomAmountMenuClick(player, event.getSlot(), title);
         }
         // Handle bounty list menu (with pagination)
         else if (title.startsWith(BountyGUI.VIEW_BOUNTIES_TITLE)) {
@@ -89,30 +89,117 @@ public class BountyGUIListener implements Listener {
             return;
         }
         
-        // Handle currency type selection
-        BountyData.CurrencyType selectedCurrency = null;
-        if (slot == 18) { // Diamonds
-            selectedCurrency = BountyData.CurrencyType.DIAMOND;
-        } else if (slot == 19) { // Emeralds
-            selectedCurrency = BountyData.CurrencyType.EMERALD;
-        } else if (slot == 20) { // Netherite
-            selectedCurrency = BountyData.CurrencyType.NETHERITE;
-        }
-        
-        if (selectedCurrency != null) {
+        // Handle preset bounty amounts
+        double bountyAmount = 0;
+        if (slot == 18) { // $100
+            bountyAmount = 100.0;
+        } else if (slot == 19) { // $500
+            bountyAmount = 500.0;
+        } else if (slot == 20) { // $1000
+            bountyAmount = 1000.0;
+        } else if (slot == 21) { // Custom Amount
             player.closeInventory();
-            
             if (isOffline) {
-                // Handle offline player currency selection
-                BountyGUI.openOfflineCurrencyAmountMenu(player, targetName, selectedCurrency);
+                BountyGUI.openOfflineCustomAmountMenu(player, targetName);
             } else {
-                // Handle online player currency selection
                 Player target = Bukkit.getPlayer(targetName);
                 if (target != null) {
-                    BountyGUI.openCurrencyAmountMenu(player, target, selectedCurrency);
+                    BountyGUI.openCustomAmountMenu(player, target);
                 } else {
                     player.sendMessage(ChatColor.RED + "Target player is no longer online!");
                 }
+            }
+            return;
+        }
+        
+        if (bountyAmount > 0) {
+            player.closeInventory();
+            
+            if (isOffline) {
+                // Handle offline player bounty setting
+                OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
+                if (offlineTarget != null) {
+                    BountyManager.setBounty(offlineTarget.getUuid(), offlineTarget.getName(), player, bountyAmount);
+                    OfflinePlayerTracker.clearTarget(player);
+                } else {
+                    player.sendMessage(ChatColor.RED + "Target player is no longer available!");
+                }
+            } else {
+                // Handle online player bounty setting
+                Player target = Bukkit.getPlayer(targetName);
+                if (target != null) {
+                    setBounty(player, target, bountyAmount);
+                    BountyTargetTracker.clearTarget(player);
+                } else {
+                    player.sendMessage(ChatColor.RED + "Target player is no longer online!");
+                }
+            }
+        }
+    }
+    
+    private void handleCustomAmountMenuClick(Player player, int slot, String title) {
+        // Check if it's the back button (last slot)
+        if (slot == 53) {
+            boolean isOffline = title.contains("(Offline)");
+            
+            if (isOffline) {
+                OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
+                if (offlineTarget != null) {
+                    player.closeInventory();
+                    BountyGUI.openOfflineSetBountyMenu(player, offlineTarget.getName());
+                } else {
+                    player.closeInventory();
+                }
+            } else {
+                Player target = BountyTargetTracker.getTarget(player);
+                if (target != null) {
+                    player.closeInventory();
+                    BountyGUI.openSetBountyMenu(player, target);
+                } else {
+                    player.closeInventory();
+                }
+            }
+            return;
+        }
+        
+        // Get the clicked item
+        ItemStack clickedItem = player.getOpenInventory().getItem(slot);
+        if (clickedItem == null) {
+            return;
+        }
+        
+        // Extract amount from the item display name
+        String displayName = clickedItem.getItemMeta().getDisplayName();
+        if (displayName.contains("$")) {
+            String amountStr = displayName.replaceAll("[^0-9.]", "");
+            try {
+                double amount = Double.parseDouble(amountStr);
+                
+                boolean isOffline = title.contains("(Offline)");
+                
+                if (isOffline) {
+                    // Handle offline bounty setting
+                    OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
+                    if (offlineTarget != null) {
+                        BountyManager.setBounty(offlineTarget.getUuid(), offlineTarget.getName(), player, amount);
+                        OfflinePlayerTracker.clearTarget(player);
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Target player is no longer available!");
+                    }
+                } else {
+                    // Handle online bounty setting
+                    Player target = BountyTargetTracker.getTarget(player);
+                    if (target != null) {
+                        setBounty(player, target, amount);
+                        BountyTargetTracker.clearTarget(player);
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Target player is no longer available!");
+                    }
+                }
+                
+                player.closeInventory();
+            } catch (NumberFormatException e) {
+                player.sendMessage(ChatColor.RED + "Invalid bounty amount!");
             }
         }
     }
@@ -203,7 +290,7 @@ public class BountyGUIListener implements Listener {
         BountyGUI.openPlayerSelectionMenu(player);
     }
     
-    private void setBounty(Player player, Player target, BountyData.CurrencyType currency, int amount) {
+    private void setBounty(Player player, Player target, double amount) {
         if (target == player) {
             player.sendMessage(ChatColor.RED + "You cannot place a bounty on yourself!");
             return;
@@ -214,7 +301,7 @@ public class BountyGUIListener implements Listener {
             return;
         }
         
-        BountyManager.setBounty(target, player, currency, amount);
+        BountyManager.setBounty(target, player, amount);
     }
     
     private void handlePlayerSelectionMenuClick(Player player, int slot, Inventory inventory, String title) {
@@ -279,80 +366,6 @@ public class BountyGUIListener implements Listener {
             player.closeInventory();
             BountyGUI.openOfflineSetBountyMenu(player, targetName);
         }
-    }
-    
-    private void handleCurrencyAmountMenuClick(Player player, int slot, String title) {
-        // Check if it's the back button (last slot)
-        if (slot == 53) {
-            boolean isOffline = title.contains("(Offline)");
-            
-            if (isOffline) {
-                OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
-                if (offlineTarget != null) {
-                    player.closeInventory();
-                    BountyGUI.openOfflineSetBountyMenu(player, offlineTarget.getName());
-                } else {
-                    player.closeInventory();
-                }
-            } else {
-                Player target = BountyTargetTracker.getTarget(player);
-                if (target != null) {
-                    player.closeInventory();
-                    BountyGUI.openSetBountyMenu(player, target);
-                } else {
-                    player.closeInventory();
-                }
-            }
-            return;
-        }
-        
-        // Extract currency type from title
-        String[] titleParts = title.split(" ");
-        String currencyName = titleParts[1]; // "Diamond", "Emerald", or "Netherite"
-        
-        // Determine currency type
-        BountyData.CurrencyType currency;
-        if (currencyName.equals("Diamond")) {
-            currency = BountyData.CurrencyType.DIAMOND;
-        } else if (currencyName.equals("Emerald")) {
-            currency = BountyData.CurrencyType.EMERALD;
-        } else if (currencyName.equals("Netherite")) {
-            currency = BountyData.CurrencyType.NETHERITE;
-        } else {
-            player.sendMessage(ChatColor.RED + "Invalid currency type!");
-            return;
-        }
-        
-        // Calculate amount (slot + 1, but skip the target info slot)
-        int amount = slot + 1;
-        if (amount > 64) {
-            player.sendMessage(ChatColor.RED + "Invalid amount!");
-            return;
-        }
-        
-        boolean isOffline = title.contains("(Offline)");
-        
-        if (isOffline) {
-            // Handle offline bounty setting
-            OfflinePlayerTracker.OfflinePlayerInfo offlineTarget = OfflinePlayerTracker.getTarget(player);
-            if (offlineTarget != null) {
-                BountyManager.setBounty(offlineTarget.getUuid(), offlineTarget.getName(), player, currency, amount);
-                OfflinePlayerTracker.clearTarget(player);
-            } else {
-                player.sendMessage(ChatColor.RED + "Target player is no longer available!");
-            }
-        } else {
-            // Handle online bounty setting
-            Player target = BountyTargetTracker.getTarget(player);
-            if (target != null) {
-                setBounty(player, target, currency, amount);
-                BountyTargetTracker.clearTarget(player);
-            } else {
-                player.sendMessage(ChatColor.RED + "Target player is no longer available!");
-            }
-        }
-        
-        player.closeInventory();
     }
     
     private void handleMyBountiesMenuClick(Player player, int slot) {
@@ -420,7 +433,7 @@ public class BountyGUIListener implements Listener {
                         ItemStack targetItem = inventory.getItem(13);
                         if (targetItem != null) {
                             String displayName = targetItem.getItemMeta().getDisplayName();
-                            String targetName = ChatColor.stripColor(displayName).replace("Bounty on ", "");
+                            String targetName = ChatColor.stripColor(displayName).replace("Target: ", "");
                             
                             Player target = Bukkit.getPlayer(targetName);
                             if (target != null) {

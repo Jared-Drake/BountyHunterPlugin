@@ -1,11 +1,24 @@
 package com.jared.bountyhunter;
 
+import net.milkbowl.vault.economy.Economy;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class BountyHunter extends JavaPlugin {
+    private static Economy econ = null;
 
     @Override
     public void onEnable() {
+        // Check for Vault dependency
+        if (!setupEconomy()) {
+            getLogger().severe("Vault not found! Disabling BountyHunter plugin.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        
+        // Set economy in BountyManager
+        BountyManager.setEconomy(econ);
+        
         // Initialize data managers
         BountyDataManager.initialize(this);
         PlayerDataManager.initialize(this);
@@ -23,6 +36,7 @@ public class BountyHunter extends JavaPlugin {
         EnhancedTracker.startEnhancedTracking(this);
         
         getLogger().info("BountyHunter enabled!");
+        getLogger().info("Economy system: " + econ.getName());
         getLogger().info("Loaded " + BountyManager.getBounties().size() + " bounties from file.");
     }
     
@@ -36,5 +50,17 @@ public class BountyHunter extends JavaPlugin {
         BountyDataManager.saveBounties(BountyManager.getBounties());
         getLogger().info("Saved " + BountyManager.getBounties().size() + " bounties to file.");
         getLogger().info("BountyHunter disabled!");
+    }
+    
+    private boolean setupEconomy() {
+        if (getServer().getPluginManager().getPlugin("Vault") == null) {
+            return false;
+        }
+        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
+        if (rsp == null) {
+            return false;
+        }
+        econ = rsp.getProvider();
+        return econ != null;
     }
 }

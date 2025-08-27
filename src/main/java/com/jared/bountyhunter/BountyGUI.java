@@ -21,10 +21,6 @@ public class BountyGUI {
     public static final String MY_BOUNTIES_TITLE = ChatColor.BLUE + "My Accepted Bounties";
     public static final String BOUNTY_CONFIRM_TITLE = ChatColor.GREEN + "Confirm Bounty Action";
     
-    private static final Material DIAMOND_ICON = Material.DIAMOND;
-    private static final Material EMERALD_ICON = Material.EMERALD;
-    private static final Material NETHERITE_ICON = Material.NETHERITE_INGOT;
-    
     public static void openMainMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 36, BOUNTY_MENU_TITLE);
         
@@ -32,7 +28,7 @@ public class BountyGUI {
         ItemStack setBountyItem = createGuiItem(Material.PLAYER_HEAD, (byte) 0, 
             ChatColor.GREEN + "Set Bounty", 
             ChatColor.GRAY + "Click to place a bounty on a player",
-            ChatColor.YELLOW + "Cost: Diamonds, Emeralds, or Netherite");
+            ChatColor.YELLOW + "Cost: Money from your account");
         inv.setItem(10, setBountyItem);
         
         // View bounties option
@@ -87,8 +83,7 @@ public class BountyGUI {
                     BountyData bounty = BountyManager.getBounty(player.getUniqueId());
                     statusLore.add("");
                     statusLore.add(ChatColor.RED + "⚠ You have a bounty on you!");
-                    String currencyName = getCurrencyName(bounty.getCurrency());
-                    statusLore.add(ChatColor.GOLD + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
+                    statusLore.add(ChatColor.GOLD + "Reward: $" + String.format("%.2f", bounty.getAmount()));
                     if (bounty.isAccepted()) {
                         statusLore.add(ChatColor.RED + "Hunter: " + bounty.getHunterName());
                     }
@@ -108,24 +103,29 @@ public class BountyGUI {
         // Target player head
         ItemStack targetHead = createGuiItem(Material.PLAYER_HEAD, (byte) 0, 
             ChatColor.RED + "Target: " + target.getName(),
-            ChatColor.GRAY + "Select currency and amount below");
+            ChatColor.GRAY + "Select bounty amount below");
         inv.setItem(4, targetHead);
         
-        // Currency type selection at the top
-        ItemStack diamondCurrency = createGuiItem(DIAMOND_ICON, 
-            ChatColor.AQUA + "Diamonds",
-            ChatColor.GRAY + "Click to select diamond amounts");
-        inv.setItem(18, diamondCurrency);
+        // Money amount selection (common amounts)
+        ItemStack smallBounty = createGuiItem(Material.GOLD_INGOT, 
+            ChatColor.GREEN + "$100 Bounty",
+            ChatColor.GRAY + "Click to set a $100 bounty");
+        inv.setItem(18, smallBounty);
         
-        ItemStack emeraldCurrency = createGuiItem(EMERALD_ICON, 
-            ChatColor.GREEN + "Emeralds",
-            ChatColor.GRAY + "Click to select emerald amounts");
-        inv.setItem(19, emeraldCurrency);
+        ItemStack mediumBounty = createGuiItem(Material.DIAMOND, 
+            ChatColor.AQUA + "$500 Bounty",
+            ChatColor.GRAY + "Click to set a $500 bounty");
+        inv.setItem(19, mediumBounty);
         
-        ItemStack netheriteCurrency = createGuiItem(NETHERITE_ICON, 
-            ChatColor.DARK_PURPLE + "Netherite Ingots",
-            ChatColor.GRAY + "Click to select netherite amounts");
-        inv.setItem(20, netheriteCurrency);
+        ItemStack largeBounty = createGuiItem(Material.EMERALD, 
+            ChatColor.GREEN + "$1000 Bounty",
+            ChatColor.GRAY + "Click to set a $1000 bounty");
+        inv.setItem(20, largeBounty);
+        
+        ItemStack customBounty = createGuiItem(Material.PAPER, 
+            ChatColor.GOLD + "Custom Amount",
+            ChatColor.GRAY + "Click to set a custom bounty amount");
+        inv.setItem(21, customBounty);
         
         // Cancel button
         ItemStack cancelItem = createGuiItem(Material.BARRIER, 
@@ -142,25 +142,30 @@ public class BountyGUI {
         // Target player head (skeleton skull for offline)
         ItemStack targetHead = createGuiItem(Material.SKELETON_SKULL, 
             ChatColor.GRAY + "Target: " + targetName + " (Offline)",
-            ChatColor.GRAY + "Select currency and amount below",
+            ChatColor.GRAY + "Select bounty amount below",
             ChatColor.YELLOW + "Player is currently offline");
         inv.setItem(4, targetHead);
         
-        // Currency type selection at the top
-        ItemStack diamondCurrency = createGuiItem(DIAMOND_ICON, 
-            ChatColor.AQUA + "Diamonds",
-            ChatColor.GRAY + "Click to select diamond amounts");
-        inv.setItem(18, diamondCurrency);
+        // Money amount selection (common amounts)
+        ItemStack smallBounty = createGuiItem(Material.GOLD_INGOT, 
+            ChatColor.GREEN + "$100 Bounty",
+            ChatColor.GRAY + "Click to set a $100 bounty");
+        inv.setItem(18, smallBounty);
         
-        ItemStack emeraldCurrency = createGuiItem(EMERALD_ICON, 
-            ChatColor.GREEN + "Emeralds",
-            ChatColor.GRAY + "Click to select emerald amounts");
-        inv.setItem(19, emeraldCurrency);
+        ItemStack mediumBounty = createGuiItem(Material.DIAMOND, 
+            ChatColor.AQUA + "$500 Bounty",
+            ChatColor.GRAY + "Click to set a $500 bounty");
+        inv.setItem(19, mediumBounty);
         
-        ItemStack netheriteCurrency = createGuiItem(NETHERITE_ICON, 
-            ChatColor.DARK_PURPLE + "Netherite Ingots",
-            ChatColor.GRAY + "Click to select netherite amounts");
-        inv.setItem(20, netheriteCurrency);
+        ItemStack largeBounty = createGuiItem(Material.EMERALD, 
+            ChatColor.GREEN + "$1000 Bounty",
+            ChatColor.GRAY + "Click to set a $1000 bounty");
+        inv.setItem(20, largeBounty);
+        
+        ItemStack customBounty = createGuiItem(Material.PAPER, 
+            ChatColor.GOLD + "Custom Amount",
+            ChatColor.GRAY + "Click to set a custom bounty amount");
+        inv.setItem(21, customBounty);
         
         // Cancel button
         ItemStack cancelItem = createGuiItem(Material.BARRIER, 
@@ -171,27 +176,26 @@ public class BountyGUI {
         player.openInventory(inv);
     }
     
-    public static void openCurrencyAmountMenu(Player player, Player target, BountyData.CurrencyType currency) {
-        String currencyName = getCurrencyName(currency);
-        Material currencyMaterial = getCurrencyMaterial(currency);
-        ChatColor currencyColor = getCurrencyColor(currency);
-        
-        Inventory inv = Bukkit.createInventory(null, 54, currencyColor + "Select " + currencyName + " Amount");
+    public static void openCustomAmountMenu(Player player, Player target) {
+        Inventory inv = Bukkit.createInventory(null, 54, ChatColor.GOLD + "Set Custom Bounty Amount");
         
         // Target info at top
         ItemStack targetInfo = createGuiItem(Material.PLAYER_HEAD, (byte) 0,
             ChatColor.RED + "Target: " + target.getName(),
-            ChatColor.GRAY + "Currency: " + currencyName);
+            ChatColor.GRAY + "Select custom bounty amount");
         inv.setItem(4, targetInfo);
         
-        // Amount options (1-64)
-        for (int i = 0; i < 54; i++) {
-            int amount = i + 1;
-            if (amount > 64) break;
+        // Amount options (common amounts)
+        double[] amounts = {50, 100, 200, 300, 400, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000};
+        
+        for (int i = 0; i < amounts.length && i < 45; i++) {
+            double amount = amounts[i];
+            Material icon = getMoneyIcon(amount);
+            ChatColor color = getMoneyColor(amount);
             
-            ItemStack amountItem = createGuiItem(currencyMaterial, 
-                currencyColor + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""),
-                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""));
+            ItemStack amountItem = createGuiItem(icon, 
+                color + "$" + String.format("%.0f", amount) + " Bounty",
+                ChatColor.GRAY + "Click to set bounty with $" + String.format("%.0f", amount));
             inv.setItem(i, amountItem);
         }
         
@@ -204,27 +208,27 @@ public class BountyGUI {
         player.openInventory(inv);
     }
     
-    public static void openOfflineCurrencyAmountMenu(Player player, String targetName, BountyData.CurrencyType currency) {
-        String currencyName = getCurrencyName(currency);
-        Material currencyMaterial = getCurrencyMaterial(currency);
-        ChatColor currencyColor = getCurrencyColor(currency);
-        
-        Inventory inv = Bukkit.createInventory(null, 54, currencyColor + "Select " + currencyName + " Amount (Offline)");
+    public static void openOfflineCustomAmountMenu(Player player, String targetName) {
+        Inventory inv = Bukkit.createInventory(null, 54, ChatColor.GOLD + "Set Custom Bounty Amount (Offline)");
         
         // Target info at top
         ItemStack targetInfo = createGuiItem(Material.SKELETON_SKULL,
             ChatColor.GRAY + "Target: " + targetName + " (Offline)",
-            ChatColor.GRAY + "Currency: " + currencyName);
+            ChatColor.GRAY + "Select custom bounty amount",
+            ChatColor.YELLOW + "Target is currently offline");
         inv.setItem(4, targetInfo);
         
-        // Amount options (1-64)
-        for (int i = 0; i < 54; i++) {
-            int amount = i + 1;
-            if (amount > 64) break;
+        // Amount options (common amounts)
+        double[] amounts = {50, 100, 200, 300, 400, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000};
+        
+        for (int i = 0; i < amounts.length && i < 45; i++) {
+            double amount = amounts[i];
+            Material icon = getMoneyIcon(amount);
+            ChatColor color = getMoneyColor(amount);
             
-            ItemStack amountItem = createGuiItem(currencyMaterial, 
-                currencyColor + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""),
-                ChatColor.GRAY + "Click to set bounty with " + String.valueOf(amount) + " " + currencyName + (amount > 1 ? "s" : ""),
+            ItemStack amountItem = createGuiItem(icon, 
+                color + "$" + String.format("%.0f", amount) + " Bounty",
+                ChatColor.GRAY + "Click to set bounty with $" + String.format("%.0f", amount),
                 ChatColor.YELLOW + "Target is currently offline");
             inv.setItem(i, amountItem);
         }
@@ -236,6 +240,22 @@ public class BountyGUI {
         inv.setItem(53, backItem);
         
         player.openInventory(inv);
+    }
+    
+    private static Material getMoneyIcon(double amount) {
+        if (amount < 100) return Material.IRON_INGOT;
+        if (amount < 500) return Material.GOLD_INGOT;
+        if (amount < 1000) return Material.DIAMOND;
+        if (amount < 3000) return Material.EMERALD;
+        return Material.NETHERITE_INGOT;
+    }
+    
+    private static ChatColor getMoneyColor(double amount) {
+        if (amount < 100) return ChatColor.GRAY;
+        if (amount < 500) return ChatColor.GREEN;
+        if (amount < 1000) return ChatColor.AQUA;
+        if (amount < 3000) return ChatColor.GREEN;
+        return ChatColor.DARK_PURPLE;
     }
     
     public static void openBountyListMenu(Player player) {
@@ -272,7 +292,7 @@ public class BountyGUI {
             if (a.isOnline() != b.isOnline()) {
                 return a.isOnline() ? -1 : 1; // Online first
             }
-            return Integer.compare(b.getBounty().getAmount(), a.getBounty().getAmount()); // Higher amount first
+            return Double.compare(b.getBounty().getAmount(), a.getBounty().getAmount()); // Higher amount first
         });
         
         // Pagination settings
@@ -419,16 +439,127 @@ public class BountyGUI {
         }
         
         // Cancel button
-        ItemStack cancelItem = createGuiItem(Material.BARRIER,
+        ItemStack cancelButton = createGuiItem(Material.BARRIER,
             ChatColor.RED + "Cancel",
             ChatColor.GRAY + "Click to go back");
-        inv.setItem(49, cancelItem);
+        inv.setItem(49, cancelButton);
         
         player.openInventory(inv);
     }
     
-    private static String getTimeAgoString(long milliseconds) {
-        long seconds = milliseconds / 1000;
+    public static void openMyBountiesMenu(Player player) {
+        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+        
+        if (acceptedBountyTarget == null) {
+            player.sendMessage(ChatColor.YELLOW + "You don't have any accepted bounties.");
+            return;
+        }
+        
+        Inventory inv = Bukkit.createInventory(null, 36, MY_BOUNTIES_TITLE);
+        
+        // Target info
+        String targetName = PlayerDataManager.getPlayerName(acceptedBountyTarget);
+        if (targetName == null) targetName = "Unknown";
+        
+        BountyData bounty = BountyManager.getBounty(acceptedBountyTarget);
+        if (bounty == null) {
+            player.sendMessage(ChatColor.RED + "Bounty data not found!");
+            return;
+        }
+        
+        ItemStack targetInfo = createGuiItem(Material.PLAYER_HEAD, (byte) 0,
+            ChatColor.RED + "Target: " + targetName,
+            ChatColor.GRAY + "Bounty Amount: $" + String.format("%.2f", bounty.getAmount()),
+            ChatColor.GRAY + "Placed by: " + bounty.getPlacedBy());
+        inv.setItem(13, targetInfo);
+        
+        // Track target button
+        ItemStack trackButton = createGuiItem(Material.COMPASS,
+            ChatColor.GREEN + "Track Target",
+            ChatColor.GRAY + "Click to track your target with compass",
+            ChatColor.YELLOW + "Use compass to find your target!");
+        inv.setItem(4, trackButton);
+        
+        // Abandon bounty button
+        ItemStack abandonButton = createGuiItem(Material.BARRIER,
+            ChatColor.RED + "Abandon Bounty",
+            ChatColor.GRAY + "Click to abandon this bounty",
+            ChatColor.YELLOW + "This will make the bounty available again");
+        inv.setItem(22, abandonButton);
+        
+        // Back button
+        ItemStack backButton = createGuiItem(Material.ARROW,
+            ChatColor.YELLOW + "Back to Main Menu",
+            ChatColor.GRAY + "Click to go back");
+        inv.setItem(31, backButton);
+        
+        player.openInventory(inv);
+    }
+    
+    public static void openBountyConfirmMenu(Player player, Player target, String action) {
+        Inventory inv = Bukkit.createInventory(null, 27, BOUNTY_CONFIRM_TITLE);
+        
+        // Target info in center
+        ItemStack targetInfo = createGuiItem(Material.PLAYER_HEAD, (byte) 0,
+            ChatColor.RED + "Target: " + target.getName(),
+            ChatColor.GRAY + "Action: " + (action.equals("accept") ? "Accept Bounty" : "Abandon Bounty"));
+        inv.setItem(13, targetInfo);
+        
+        if (action.equals("accept")) {
+            // Confirm accept button
+            ItemStack confirmButton = createGuiItem(Material.LIME_WOOL,
+                ChatColor.GREEN + "Confirm Accept",
+                ChatColor.GRAY + "Click to accept this bounty",
+                ChatColor.YELLOW + "You will become the hunter!");
+            inv.setItem(11, confirmButton);
+        } else if (action.equals("abandon")) {
+            // Confirm abandon button
+            ItemStack confirmButton = createGuiItem(Material.RED_WOOL,
+                ChatColor.RED + "Confirm Abandon",
+                ChatColor.GRAY + "Click to abandon this bounty",
+                ChatColor.YELLOW + "The bounty will be available again!");
+            inv.setItem(11, confirmButton);
+        }
+        
+        // Cancel button
+        ItemStack cancelButton = createGuiItem(Material.BARRIER,
+            ChatColor.RED + "Cancel",
+            ChatColor.GRAY + "Click to cancel");
+        inv.setItem(15, cancelButton);
+        
+        player.openInventory(inv);
+    }
+    
+    private static ItemStack createBountyItemFromInfo(BountyDisplayInfo bountyInfo) {
+        BountyData bounty = bountyInfo.getBounty();
+        String targetName = bountyInfo.getName();
+        boolean isOnline = bountyInfo.isOnline();
+        
+        Material icon = isOnline ? Material.PLAYER_HEAD : Material.SKELETON_SKULL;
+        ChatColor nameColor = isOnline ? ChatColor.GREEN : ChatColor.GRAY;
+        ChatColor statusColor = bounty.isAccepted() ? ChatColor.RED : ChatColor.GOLD;
+        
+        List<String> lore = new ArrayList<>();
+        lore.add(ChatColor.GRAY + "Bounty Amount: " + ChatColor.GOLD + "$" + String.format("%.2f", bounty.getAmount()));
+        lore.add(ChatColor.GRAY + "Placed by: " + bounty.getPlacedBy());
+        
+        if (bounty.isAccepted()) {
+            lore.add(ChatColor.RED + "Status: Accepted by " + bounty.getHunterName());
+            lore.add(ChatColor.YELLOW + "This bounty is being hunted!");
+        } else {
+            lore.add(ChatColor.GREEN + "Status: Available");
+            lore.add(ChatColor.YELLOW + "Click to accept this bounty!");
+        }
+        
+        if (!isOnline) {
+            lore.add(ChatColor.YELLOW + "Target is currently offline");
+        }
+        
+        return createGuiItem(icon, nameColor + "Bounty on " + targetName, lore.toArray(new String[0]));
+    }
+    
+    private static String getTimeAgoString(long timeSince) {
+        long seconds = timeSince / 1000;
         long minutes = seconds / 60;
         long hours = minutes / 60;
         long days = hours / 24;
@@ -444,321 +575,46 @@ public class BountyGUI {
         }
     }
     
-    private static ItemStack createBountyItem(Player target, BountyData bounty) {
-        Material material;
-        String currencyName;
-        
-        switch (bounty.getCurrency()) {
-            case DIAMOND:
-                material = Material.DIAMOND;
-                currencyName = "Diamond";
-                break;
-            case EMERALD:
-                material = Material.EMERALD;
-                currencyName = "Emerald";
-                break;
-            case NETHERITE:
-                material = Material.NETHERITE_INGOT;
-                currencyName = "Netherite Ingot";
-                break;
-            default:
-                material = Material.PAPER;
-                currencyName = "Unknown";
-        }
-        
-        List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GREEN + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
-        lore.add(ChatColor.GRAY + "Set by: " + bounty.getPlacedBy());
-        lore.add("");
-        
-        if (bounty.isAccepted()) {
-            lore.add(ChatColor.RED + "Status: ACCEPTED");
-            lore.add(ChatColor.RED + "Hunter: " + bounty.getHunterName());
-            
-            // Check if both players are online and in hunter/target mode
-            Player hunterPlayer = Bukkit.getPlayer(bounty.getHunterUUID());
-            if (hunterPlayer != null && target.isOnline()) {
-                if (PlayerModeManager.isHunter(hunterPlayer) && PlayerModeManager.isTarget(target)) {
-                    lore.add(ChatColor.DARK_RED + "⚔ ACTIVE HUNT IN PROGRESS ⚔");
-                    lore.add(ChatColor.GRAY + "Both players are online and in combat mode!");
-                } else {
-                    lore.add(ChatColor.YELLOW + "Hunt will activate when both players are online");
-                }
-            } else {
-                lore.add(ChatColor.GRAY + "Waiting for players to come online...");
-            }
-            lore.add("");
-            lore.add(ChatColor.GRAY + "This bounty has been claimed by another hunter");
-        } else {
-            lore.add(ChatColor.GREEN + "Status: AVAILABLE");
-            lore.add("");
-            lore.add(ChatColor.YELLOW + "Left-click to accept this bounty");
-            lore.add(ChatColor.AQUA + "⚡ NEW: If target kills you, they get the reward!");
-            lore.add(ChatColor.GRAY + "Risk vs Reward - hunt carefully...");
-        }
-        
-        return createGuiItem(material, 
-            ChatColor.GOLD + "Bounty on " + target.getName(),
-            lore.toArray(new String[0]));
-    }
-    
     private static ItemStack createGuiItem(Material material, String name, String... lore) {
         return createGuiItem(material, (byte) 0, name, lore);
     }
     
     private static ItemStack createGuiItem(Material material, byte data, String name, String... lore) {
-        ItemStack item = new ItemStack(material, 1);
+        ItemStack item = new ItemStack(material, 1, data);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(name);
         
-        List<String> loreList = new ArrayList<>();
-        for (String line : lore) {
-            loreList.add(line);
+        if (lore.length > 0) {
+            List<String> loreList = new ArrayList<>();
+            for (String line : lore) {
+                loreList.add(line);
+            }
+            meta.setLore(loreList);
         }
-        meta.setLore(loreList);
         
         item.setItemMeta(meta);
         return item;
     }
     
-    private static String getCurrencyName(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return "Diamond";
-            case EMERALD:
-                return "Emerald";
-            case NETHERITE:
-                return "Netherite Ingot";
-            default:
-                return "Unknown";
-        }
-    }
-    
-    private static Material getCurrencyMaterial(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return Material.DIAMOND;
-            case EMERALD:
-                return Material.EMERALD;
-            case NETHERITE:
-                return Material.NETHERITE_INGOT;
-            default:
-                return Material.PAPER;
-        }
-    }
-    
-    private static ChatColor getCurrencyColor(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return ChatColor.AQUA;
-            case EMERALD:
-                return ChatColor.GREEN;
-            case NETHERITE:
-                return ChatColor.DARK_PURPLE;
-            default:
-                return ChatColor.WHITE;
-        }
-    }
-    
-    public static void openMyBountiesMenu(Player player) {
-        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
-        
-        if (acceptedBountyTarget == null) {
-            player.sendMessage(ChatColor.YELLOW + "You haven't accepted any bounties.");
-            return;
-        }
-        
-        Inventory inv = Bukkit.createInventory(null, 27, MY_BOUNTIES_TITLE);
-        
-        Player target = Bukkit.getPlayer(acceptedBountyTarget);
-        BountyData bounty = BountyManager.getBounty(acceptedBountyTarget);
-        
-        if (target != null && bounty != null) {
-            // Target info
-            ItemStack targetItem = createAcceptedBountyItem(target, bounty);
-            inv.setItem(13, targetItem);
-            
-            // Abandon bounty button
-            ItemStack abandonItem = createGuiItem(Material.BARRIER,
-                ChatColor.RED + "Abandon Bounty",
-                ChatColor.GRAY + "Click to abandon this bounty",
-                ChatColor.YELLOW + "The bounty will become available again");
-            inv.setItem(22, abandonItem);
-            
-            // Track target button (compass functionality)
-            ItemStack trackItem = createGuiItem(Material.COMPASS,
-                ChatColor.GREEN + "Track Target",
-                ChatColor.GRAY + "Points toward your target",
-                target.isOnline() ? 
-                    ChatColor.GREEN + target.getName() + " is online" : 
-                    ChatColor.RED + target.getName() + " is offline");
-            inv.setItem(4, trackItem);
-        }
-        
-        player.openInventory(inv);
-    }
-    
-    public static void openBountyConfirmMenu(Player player, Player target, String action) {
-        Inventory inv = Bukkit.createInventory(null, 27, BOUNTY_CONFIRM_TITLE);
-        
-        BountyData bounty = BountyManager.getBounty(target.getUniqueId());
-        if (bounty == null) return;
-        
-        // Target info
-        ItemStack targetItem = createBountyItem(target, bounty);
-        inv.setItem(13, targetItem);
-        
-        if (action.equals("accept")) {
-            // Confirm accept button
-            ItemStack confirmItem = createGuiItem(Material.EMERALD_BLOCK,
-                ChatColor.GREEN + "Confirm Accept",
-                ChatColor.GRAY + "Click to accept this bounty",
-                ChatColor.YELLOW + "You will become the exclusive hunter");
-            inv.setItem(11, confirmItem);
-        } else if (action.equals("abandon")) {
-            // Confirm abandon button
-            ItemStack confirmItem = createGuiItem(Material.REDSTONE_BLOCK,
-                ChatColor.RED + "Confirm Abandon",
-                ChatColor.GRAY + "Click to abandon this bounty",
-                ChatColor.YELLOW + "The bounty will become available again");
-            inv.setItem(11, confirmItem);
-        }
-        
-        // Cancel button
-        ItemStack cancelItem = createGuiItem(Material.BARRIER,
-            ChatColor.RED + "Cancel",
-            ChatColor.GRAY + "Click to go back");
-        inv.setItem(15, cancelItem);
-        
-        player.openInventory(inv);
-    }
-    
-    private static ItemStack createAcceptedBountyItem(Player target, BountyData bounty) {
-        Material material = getCurrencyMaterial(bounty.getCurrency());
-        String currencyName = getCurrencyName(bounty.getCurrency());
-        
-        List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GREEN + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
-        lore.add(ChatColor.GRAY + "Set by: " + bounty.getPlacedBy());
-        lore.add("");
-        lore.add(ChatColor.BLUE + "Status: You are the hunter");
-        
-        if (target.isOnline()) {
-            lore.add(ChatColor.GREEN + "Target is online");
-            
-            // Check if both players are in hunter/target mode
-            Player hunter = Bukkit.getPlayer(bounty.getHunterUUID());
-            if (hunter != null && PlayerModeManager.isHunter(hunter) && PlayerModeManager.isTarget(target)) {
-                lore.add(ChatColor.DARK_RED + "⚔ HUNTER MODE ACTIVE ⚔");
-                lore.add(ChatColor.GRAY + "You have night vision & enhanced tracking!");
-                lore.add(ChatColor.GRAY + "Target has no special effects!");
-            } else {
-                lore.add(ChatColor.YELLOW + "Hunter mode will activate soon...");
-            }
-        } else {
-            lore.add(ChatColor.RED + "Target is offline");
-            lore.add(ChatColor.GRAY + "Hunter mode inactive while offline");
-        }
-        
-        lore.add("");
-        lore.add(ChatColor.YELLOW + "Kill " + target.getName() + " to claim the reward!");
-        lore.add(ChatColor.RED + "⚠ Warning: If they kill you, they get the bounty!");
-        
-        return createGuiItem(material,
-            ChatColor.GOLD + "Hunting: " + target.getName(),
-            lore.toArray(new String[0]));
-    }
-    
-    private static ItemStack createBountyItemFromInfo(BountyDisplayInfo bountyInfo) {
-        BountyData bounty = bountyInfo.getBounty();
-        Material material;
-        String currencyName;
-        
-        switch (bounty.getCurrency()) {
-            case DIAMOND:
-                material = Material.DIAMOND;
-                currencyName = "Diamond";
-                break;
-            case EMERALD:
-                material = Material.EMERALD;
-                currencyName = "Emerald";
-                break;
-            case NETHERITE:
-                material = Material.NETHERITE_INGOT;
-                currencyName = "Netherite Ingot";
-                break;
-            default:
-                material = Material.PAPER;
-                currencyName = "Unknown";
-        }
-        
-        List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GREEN + "Reward: " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
-        lore.add(ChatColor.GRAY + "Set by: " + bounty.getPlacedBy());
-        
-        // Online/Offline status
-        if (bountyInfo.isOnline()) {
-            lore.add(ChatColor.GREEN + "✓ Target is online");
-        } else {
-            lore.add(ChatColor.YELLOW + "⚬ Target is offline");
-        }
-        
-        lore.add("");
-        
-        if (bounty.isAccepted()) {
-            lore.add(ChatColor.RED + "Status: ACCEPTED");
-            lore.add(ChatColor.RED + "Hunter: " + bounty.getHunterName());
-            
-            // Check if both players are online and in hunter/target mode
-            Player hunterPlayer = Bukkit.getPlayer(bounty.getHunterUUID());
-            Player targetPlayer = Bukkit.getPlayer(bountyInfo.getTargetUUID());
-            if (hunterPlayer != null && targetPlayer != null) {
-                if (PlayerModeManager.isHunter(hunterPlayer) && PlayerModeManager.isTarget(targetPlayer)) {
-                    lore.add(ChatColor.DARK_RED + "⚔ ACTIVE HUNT IN PROGRESS ⚔");
-                    lore.add(ChatColor.GRAY + "Both players are online and in combat mode!");
-                } else {
-                    lore.add(ChatColor.YELLOW + "Hunt will activate when both players are online");
-                }
-            } else {
-                lore.add(ChatColor.GRAY + "Waiting for players to come online...");
-            }
-            lore.add("");
-            lore.add(ChatColor.GRAY + "This bounty has been claimed by another hunter");
-        } else {
-            lore.add(ChatColor.GREEN + "Status: AVAILABLE");
-            lore.add("");
-            lore.add(ChatColor.YELLOW + "Left-click to accept this bounty");
-            lore.add(ChatColor.AQUA + "⚡ NEW: If target kills you, they get the reward!");
-            lore.add(ChatColor.GRAY + "Risk vs Reward - hunt carefully...");
-        }
-        
-        return createGuiItem(material, 
-            ChatColor.GOLD + "Bounty on " + bountyInfo.getTargetName(),
-            lore.toArray(new String[0]));
-    }
-    
-    /**
-     * Helper class to hold bounty display information
-     */
-    private static class BountyDisplayInfo {
-        private final UUID targetUUID;
-        private final String targetName;
+    public static class BountyDisplayInfo {
+        private final UUID uuid;
+        private final String name;
         private final BountyData bounty;
-        private final boolean isOnline;
+        private final boolean online;
         
-        public BountyDisplayInfo(UUID targetUUID, String targetName, BountyData bounty, boolean isOnline) {
-            this.targetUUID = targetUUID;
-            this.targetName = targetName;
+        public BountyDisplayInfo(UUID uuid, String name, BountyData bounty, boolean online) {
+            this.uuid = uuid;
+            this.name = name;
             this.bounty = bounty;
-            this.isOnline = isOnline;
+            this.online = online;
         }
         
-        public UUID getTargetUUID() {
-            return targetUUID;
+        public UUID getUuid() {
+            return uuid;
         }
         
-        public String getTargetName() {
-            return targetName;
+        public String getName() {
+            return name;
         }
         
         public BountyData getBounty() {
@@ -766,7 +622,7 @@ public class BountyGUI {
         }
         
         public boolean isOnline() {
-            return isOnline;
+            return online;
         }
     }
 }

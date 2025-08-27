@@ -6,23 +6,15 @@ public class BountyData {
     private UUID targetUUID;
     private UUID placedByUUID;
     private String placedByName;
-    private CurrencyType currency;
-    private int amount;
+    private double amount;
     private UUID hunterUUID;
     private String hunterName;
     private boolean isAccepted;
     
-    public enum CurrencyType {
-        DIAMOND,
-        EMERALD,
-        NETHERITE
-    }
-    
-    public BountyData(UUID targetUUID, UUID placedByUUID, String placedByName, CurrencyType currency, int amount) {
+    public BountyData(UUID targetUUID, UUID placedByUUID, String placedByName, double amount) {
         this.targetUUID = targetUUID;
         this.placedByUUID = placedByUUID;
         this.placedByName = placedByName;
-        this.currency = currency;
         this.amount = amount;
         this.hunterUUID = null;
         this.hunterName = null;
@@ -41,11 +33,7 @@ public class BountyData {
         return placedByName;
     }
     
-    public CurrencyType getCurrency() {
-        return currency;
-    }
-    
-    public int getAmount() {
+    public double getAmount() {
         return amount;
     }
     

@@ -2,10 +2,12 @@ name: BountyHunter
 version: 2.1
 main: com.jared.bountyhunter.BountyHunter
 api-version: 1.20
-description: A GUI-based bounty hunting plugin with diamond, emerald, and netherite currency
+description: A GUI-based bounty hunting plugin with economy integration (EssentialsX, Vault, etc.)
+
+depend: [Vault]
 
 commands:
   bounty:
     description: Place, list, or remove bounties on players
-    usage: /bounty <gui|set|list|remove> [player] [currency] [amount]
+    usage: /bounty <gui|set|list|remove> [player] [amount]
     aliases: [bh, bounties]

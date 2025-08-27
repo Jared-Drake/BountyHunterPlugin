@@ -38,7 +38,6 @@ public class BountyDataManager {
             bountyConfig.set(path + ".targetUUID", targetUUID.toString());
             bountyConfig.set(path + ".placedByUUID", bounty.getPlacedByUUID().toString());
             bountyConfig.set(path + ".placedByName", bounty.getPlacedBy());
-            bountyConfig.set(path + ".currency", bounty.getCurrency().name());
             bountyConfig.set(path + ".amount", bounty.getAmount());
         }
         
@@ -64,11 +63,9 @@ public class BountyDataManager {
                 
                 UUID placedByUUID = UUID.fromString(bountiesSection.getString(path + ".placedByUUID"));
                 String placedByName = bountiesSection.getString(path + ".placedByName");
-                BountyData.CurrencyType currency = BountyData.CurrencyType.valueOf(
-                    bountiesSection.getString(path + ".currency"));
-                int amount = bountiesSection.getInt(path + ".amount");
+                double amount = bountiesSection.getDouble(path + ".amount");
                 
-                BountyData bounty = new BountyData(targetUUID, placedByUUID, placedByName, currency, amount);
+                BountyData bounty = new BountyData(targetUUID, placedByUUID, placedByName, amount);
                 bounties.put(targetUUID, bounty);
                 
             } catch (Exception e) {
@@ -85,7 +82,6 @@ public class BountyDataManager {
         bountyConfig.set(path + ".targetUUID", targetUUID.toString());
         bountyConfig.set(path + ".placedByUUID", bounty.getPlacedByUUID().toString());
         bountyConfig.set(path + ".placedByName", bounty.getPlacedBy());
-        bountyConfig.set(path + ".currency", bounty.getCurrency().name());
         bountyConfig.set(path + ".amount", bounty.getAmount());
         
         try {

@@ -2,80 +2,72 @@ package com.jared.bountyhunter;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.UUID;
 
-public class BountyCommand implements CommandExecutor {
-
+public class BountyCommand implements org.bukkit.command.CommandExecutor {
+    
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
             return true;
         }
-
+        
         Player player = (Player) sender;
-
-        if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty <gui|set|list|remove|accept|abandon|status|track|cooldown|adminremove> [player] [currency] [amount]");
-                            player.sendMessage(ChatColor.YELLOW + "💡 Use '/bounty track' to track your target or hunter!");
-                player.sendMessage(ChatColor.GRAY + "💡 Hunters: Compass tracking limited to 1000 blocks");
-                player.sendMessage(ChatColor.GRAY + "💡 Targets: Unlimited tracking range to help you survive!");
+        
+        if (args.length == 0) {
+            // Open GUI
+            BountyGUI.openMainMenu(player);
             return true;
         }
-
-        switch (args[0].toLowerCase()) {
+        
+        String subCommand = args[0].toLowerCase();
+        
+        switch (subCommand) {
             case "gui":
                 BountyGUI.openMainMenu(player);
-                return true;
+                break;
             case "set":
-                return handleSetBounty(player, args);
+                if (args.length < 3) {
+                    player.sendMessage(ChatColor.RED + "Usage: /bounty set <player> <amount>");
+                    return true;
+                }
+                handleSetBounty(player, args);
+                break;
             case "list":
-                return handleListBounties(player);
+                handleListBounties(player);
+                break;
             case "remove":
-                return handleRemoveBounty(player, args);
-            case "adminremove":
-                return handleAdminRemoveBounty(player, args);
-            case "accept":
-                return handleAcceptBounty(player, args);
-            case "abandon":
-                return handleAbandonBounty(player);
-            case "status":
-                return handleStatusCommand(player);
-            case "track":
-                return handleTrackCommand(player);
+                handleRemoveBounty(player, args);
+                break;
             case "cooldown":
-                return handleCooldownCommand(player, args);
+                handleCooldownCommand(player, args);
+                break;
+            case "track":
+                handleTrackCommand(player);
+                break;
             default:
-                player.sendMessage(ChatColor.RED + "Unknown subcommand. Use: gui, set, list, remove, accept, abandon, status, track, cooldown, or adminremove");
-                player.sendMessage(ChatColor.YELLOW + "=== Bounty Hunter Commands ===");
-                player.sendMessage(ChatColor.GRAY + "• /bounty gui - Open the bounty management GUI");
-                player.sendMessage(ChatColor.GRAY + "• /bounty set <player> <currency> <amount> - Set a bounty on a player");
-                player.sendMessage(ChatColor.GRAY + "• /bounty list - List all active bounties");
-                player.sendMessage(ChatColor.GRAY + "• /bounty remove <player> - Remove a bounty (if you placed it)");
-                player.sendMessage(ChatColor.GRAY + "• /bounty accept <player> - Accept a bounty on a player");
-                player.sendMessage(ChatColor.GRAY + "• /bounty abandon - Abandon your accepted bounty");
-                player.sendMessage(ChatColor.GRAY + "• /bounty status - Check your bounty status");
-                player.sendMessage(ChatColor.GRAY + "• /bounty track - Track your target or hunter (Hunters: 1000 block limit, Targets: Unlimited)");
-                player.sendMessage(ChatColor.GRAY + "• /bounty cooldown [player] - Check bounty cooldowns");
-                player.sendMessage(ChatColor.GRAY + "• /bounty adminremove <player> - Admin: Remove any bounty");
-                return true;
+                showHelp(player);
+                break;
         }
+        
+        return true;
     }
-
+    
     private boolean handleSetBounty(Player player, String[] args) {
-        if (args.length < 4) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty set <player> <currency> <amount>");
-            player.sendMessage(ChatColor.GRAY + "Currency options: diamond, emerald, netherite");
+        if (!player.hasPermission("bountyhunter.set")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to set bounties.");
             return true;
         }
-
-        Player target = Bukkit.getPlayer(args[1]);
+        
+        String targetName = args[1];
+        Player target = Bukkit.getPlayer(targetName);
+        
         if (target == null) {
-            player.sendMessage(ChatColor.RED + "Player not found: " + args[1]);
+            player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
             return true;
         }
 
@@ -90,32 +82,22 @@ public class BountyCommand implements CommandExecutor {
             return true;
         }
 
-        // Parse currency type
-        BountyData.CurrencyType currency;
         try {
-            currency = BountyData.CurrencyType.valueOf(args[2].toUpperCase());
-        } catch (IllegalArgumentException e) {
-            player.sendMessage(ChatColor.RED + "Invalid currency: " + args[2]);
-            player.sendMessage(ChatColor.GRAY + "Valid currencies: diamond, emerald, netherite");
-            return true;
-        }
-
-        try {
-            int amount = Integer.parseInt(args[3]);
+            double amount = Double.parseDouble(args[2]);
             if (amount <= 0) {
                 player.sendMessage(ChatColor.RED + "Amount must be positive.");
                 return true;
             }
 
-            if (amount > 64) {
-                player.sendMessage(ChatColor.RED + "Maximum bounty amount is 64.");
+            if (amount > 1000000) {
+                player.sendMessage(ChatColor.RED + "Maximum bounty amount is $1,000,000.");
                 return true;
             }
 
-            BountyManager.setBounty(target, player, currency, amount);
+            BountyManager.setBounty(target, player, amount);
             
         } catch (NumberFormatException e) {
-            player.sendMessage(ChatColor.RED + "Invalid amount: " + args[3]);
+            player.sendMessage(ChatColor.RED + "Invalid amount: " + args[2]);
         }
         return true;
     }
@@ -132,12 +114,11 @@ public class BountyCommand implements CommandExecutor {
             Player targetPlayer = Bukkit.getPlayer(uuid);
             if (targetPlayer != null) {
                 BountyData bounty = bounties.get(uuid);
-                String currencyName = getCurrencyName(bounty.getCurrency());
                 String status = bounty.isAccepted() ? 
                     ChatColor.RED + " [ACCEPTED by " + bounty.getHunterName() + "]" : 
                     ChatColor.GREEN + " [AVAILABLE]";
                 player.sendMessage(ChatColor.GRAY + "- " + targetPlayer.getName() + 
-                    ": " + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") +
+                    ": $" + String.format("%.2f", bounty.getAmount()) +
                     " (set by " + bounty.getPlacedBy() + ")" + status);
             }
         }
@@ -179,12 +160,13 @@ public class BountyCommand implements CommandExecutor {
             }
             return true;
         }
-
+        
+        // Target is online
         if (!BountyManager.hasBounty(target.getUniqueId())) {
             player.sendMessage(ChatColor.RED + "No bounty exists on " + target.getName() + ".");
             return true;
         }
-
+        
         BountyData bounty = BountyManager.getBounty(target.getUniqueId());
         if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
             BountyManager.removeBountyWithCleanup(target.getUniqueId(), player);
@@ -195,261 +177,123 @@ public class BountyCommand implements CommandExecutor {
         } else {
             player.sendMessage(ChatColor.RED + "You can only remove bounties that you placed!");
         }
-        return true;
-    }
-    
-    private boolean handleAdminRemoveBounty(Player player, String[] args) {
-        if (!player.hasPermission("bountyhunter.admin")) {
-            player.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
-            return true;
-        }
-        
-        if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty adminremove <player>");
-            return true;
-        }
-        
-        String targetName = args[1];
-        Player target = Bukkit.getPlayer(targetName);
-        
-        // Check if target is online or offline
-        if (target == null) {
-            // Target is offline, try to find by name
-            UUID targetUUID = PlayerDataManager.findPlayerUUID(targetName);
-            if (targetUUID == null) {
-                player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
-                return true;
-            }
-            
-            if (!BountyManager.hasBounty(targetUUID)) {
-                player.sendMessage(ChatColor.RED + "No bounty exists on " + targetName + ".");
-                return true;
-            }
-            
-            BountyManager.removeBountyOffline(targetUUID, player);
-            player.sendMessage(ChatColor.GREEN + "Admin removed bounty on " + targetName + ".");
-            return true;
-        }
-        
-        if (!BountyManager.hasBounty(target.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "No bounty exists on " + target.getName() + ".");
-            return true;
-        }
-        
-        BountyManager.removeBountyWithCleanup(target.getUniqueId(), player);
-        player.sendMessage(ChatColor.GREEN + "Admin removed bounty on " + target.getName() + ".");
-        return true;
-    }
-    
-    private boolean handleAcceptBounty(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Usage: /bounty accept <player>");
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            player.sendMessage(ChatColor.RED + "Player not found: " + args[1]);
-            return true;
-        }
-
-        if (target == player) {
-            player.sendMessage(ChatColor.RED + "You cannot accept a bounty on yourself.");
-            return true;
-        }
-
-        if (!BountyManager.hasBounty(target.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "No bounty exists on " + target.getName() + ".");
-            return true;
-        }
-
-        BountyData bounty = BountyManager.getBounty(target.getUniqueId());
-        
-        if (bounty.isAccepted()) {
-            if (bounty.getHunterUUID().equals(player.getUniqueId())) {
-                player.sendMessage(ChatColor.YELLOW + "You have already accepted this bounty!");
-            } else {
-                player.sendMessage(ChatColor.RED + "This bounty has already been accepted by " + bounty.getHunterName() + "!");
-            }
-            return true;
-        }
-
-        // Check if the player who placed the bounty is trying to accept it
-        if (bounty.getPlacedByUUID().equals(player.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "You cannot accept a bounty that you placed!");
-            return true;
-        }
-
-        // Accept the bounty
-        BountyManager.acceptBounty(target.getUniqueId(), player);
-        return true;
-    }
-
-    private boolean handleAbandonBounty(Player player) {
-        // Find bounty that this player has accepted
-        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
-        
-        if (acceptedBountyTarget == null) {
-            player.sendMessage(ChatColor.RED + "You haven't accepted any bounties.");
-            return true;
-        }
-
-        BountyManager.abandonBounty(acceptedBountyTarget, player);
-        return true;
-    }
-    
-    private boolean handleStatusCommand(Player player) {
-        PlayerModeManager.PlayerMode mode = PlayerModeManager.getPlayerMode(player);
-        
-        player.sendMessage(ChatColor.YELLOW + "=== Your Bounty Status ===");
-        player.sendMessage(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + mode.name());
-        
-        if (mode == PlayerModeManager.PlayerMode.BOUNTY_HUNTER) {
-            Player target = PlayerModeManager.getHunterTarget(player);
-            String targetName = target != null ? target.getName() : "Unknown";
-            player.sendMessage(ChatColor.GRAY + "Hunting: " + ChatColor.RED + targetName);
-        } else if (mode == PlayerModeManager.PlayerMode.TARGET) {
-            Player hunter = PlayerModeManager.getTargetHunter(player);
-            String hunterName = hunter != null ? hunter.getName() : "Unknown";
-            player.sendMessage(ChatColor.GRAY + "Being hunted by: " + ChatColor.RED + hunterName);
-        }
-        
-        // Show if player has a bounty on them
-        if (BountyManager.hasBounty(player.getUniqueId())) {
-            BountyData bounty = BountyManager.getBounty(player.getUniqueId());
-            String currencyName = getCurrencyName(bounty.getCurrency());
-            player.sendMessage(ChatColor.GRAY + "Bounty on you: " + ChatColor.GOLD + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : ""));
-        }
-        
-        // Show if player has accepted a bounty
-        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
-        if (acceptedBountyTarget != null) {
-            Player target = Bukkit.getPlayer(acceptedBountyTarget);
-            String targetName = target != null ? target.getName() : "Unknown";
-            BountyData bounty = BountyManager.getBounty(acceptedBountyTarget);
-            String currencyName = getCurrencyName(bounty.getCurrency());
-            player.sendMessage(ChatColor.GRAY + "Accepted bounty on: " + ChatColor.GOLD + targetName + 
-                " (" + bounty.getAmount() + " " + currencyName + (bounty.getAmount() > 1 ? "s" : "") + ")");
-        }
         
         return true;
-    }
-    
-    private boolean handleTrackCommand(Player player) {
-        if (PlayerModeManager.isHunter(player)) {
-            // Hunter tracking - check if target is within range first
-            Player target = PlayerModeManager.getHunterTarget(player);
-            if (target != null && target.isOnline()) {
-                double distance = player.getLocation().distance(target.getLocation());
-                if (distance <= 1000) {
-                    // Target is within tracking range - use enhanced tracking info
-                    String trackingInfo = EnhancedTracker.getDetailedTrackingInfo(player);
-                    player.sendMessage(trackingInfo);
-                } else {
-                    // Target is beyond tracking range
-                    player.sendMessage(ChatColor.YELLOW + "=== Target Tracking Info ===");
-                    player.sendMessage(ChatColor.RED + "❌ " + target.getName() + " is beyond tracking range!");
-                    player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + String.format("%.0f", distance) + " blocks");
-                    player.sendMessage(ChatColor.YELLOW + "💡 Move within 1000 blocks to activate compass tracking!");
-                    player.sendMessage(ChatColor.GRAY + "💡 Your compass will automatically update when in range!");
-                }
-            } else {
-                player.sendMessage(ChatColor.RED + "❌ Your target is currently offline.");
-                player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while target is offline.");
-            }
-        } else if (PlayerModeManager.isTarget(player)) {
-            // Target tracking - show hunter location info
-            Player hunter = PlayerModeManager.getTargetHunter(player);
-            if (hunter != null && hunter.isOnline()) {
-                // Update compass to point to hunter
-                player.setCompassTarget(hunter.getLocation());
-                
-                // Calculate distance and direction
-                double distance = player.getLocation().distance(hunter.getLocation());
-                String distanceStr = String.format("%.1f", distance);
-                String direction = getDirection(player.getLocation(), hunter.getLocation());
-                
-                player.sendMessage(ChatColor.YELLOW + "=== Hunter Tracking Info ===");
-                player.sendMessage(ChatColor.GREEN + "🧭 Compass pointing to " + hunter.getName() + "!");
-                player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
-                player.sendMessage(ChatColor.GRAY + "Direction: " + ChatColor.WHITE + direction);
-                player.sendMessage(ChatColor.YELLOW + "⚠ " + hunter.getName() + " is hunting you!");
-                player.sendMessage(ChatColor.GREEN + "💡 You have unlimited tracking range to help you survive!");
-                player.sendMessage(ChatColor.GRAY + "💡 Your hunter's compass tracking is limited to 1000 blocks!");
-                player.sendMessage(ChatColor.GRAY + "💡 Use your compass to track the hunter's location!");
-            } else {
-                player.sendMessage(ChatColor.RED + "❌ Your hunter is currently offline.");
-                player.sendMessage(ChatColor.GRAY + "Compass tracking unavailable while hunter is offline.");
-            }
-        } else {
-            player.sendMessage(ChatColor.RED + "❌ You must be in hunter or target mode to use tracking!");
-            player.sendMessage(ChatColor.GRAY + "💡 Accept a bounty to enter hunter mode, or have a bounty placed on you to enter target mode.");
-        }
-        
-        return true;
-    }
-    
-    private String getDirection(org.bukkit.Location from, org.bukkit.Location to) {
-        double dx = to.getX() - from.getX();
-        double dz = to.getZ() - from.getZ();
-        
-        // Calculate angle in degrees
-        double angle = Math.toDegrees(Math.atan2(dz, dx));
-        if (angle < 0) angle += 360;
-        
-        // Convert to cardinal directions
-        if (angle >= 337.5 || angle < 22.5) return "East";
-        else if (angle >= 22.5 && angle < 67.5) return "Southeast";
-        else if (angle >= 67.5 && angle < 112.5) return "South";
-        else if (angle >= 112.5 && angle < 157.5) return "Southwest";
-        else if (angle >= 157.5 && angle < 202.5) return "West";
-        else if (angle >= 202.5 && angle < 247.5) return "Northwest";
-        else if (angle >= 247.5 && angle < 292.5) return "North";
-        else return "Northeast";
     }
     
     private boolean handleCooldownCommand(Player player, String[] args) {
         if (args.length < 2) {
-            // Show player's own cooldown or list all cooldowns
-            return showCooldownInfo(player);
+            player.sendMessage(ChatColor.RED + "Usage: /bounty cooldown <check|list|clear> [player]");
+            return true;
         }
         
         String subCommand = args[1].toLowerCase();
         
         switch (subCommand) {
+            case "check":
+                if (args.length < 3) {
+                    player.sendMessage(ChatColor.RED + "Usage: /bounty cooldown check <player>");
+                    return true;
+                }
+                return checkPlayerCooldown(player, args[2]);
             case "list":
+                if (!player.hasPermission("bountyhunter.admin")) {
+                    player.sendMessage(ChatColor.RED + "You don't have permission to list cooldowns.");
+                    return true;
+                }
                 return listAllCooldowns(player);
             case "clear":
                 if (args.length < 3) {
-                    player.sendMessage(ChatColor.RED + "Usage: /bounty cooldown clear <player>");
-                    return true;
+                    if (!player.hasPermission("bountyhunter.admin")) {
+                        player.sendMessage(ChatColor.RED + "You don't have permission to clear cooldowns.");
+                        return true;
+                    }
+                    return clearAllCooldowns(player);
+                } else {
+                    return clearPlayerCooldown(player, args[2]);
                 }
-                return clearPlayerCooldown(player, args[2]);
-            case "clearall":
-                return clearAllCooldowns(player);
             default:
-                // Check specific player's cooldown
-                return checkPlayerCooldown(player, args[1]);
+                player.sendMessage(ChatColor.RED + "Unknown cooldown command. Use: check, list, or clear");
+                return true;
         }
     }
     
-    private boolean showCooldownInfo(Player player) {
-        player.sendMessage(ChatColor.YELLOW + "=== Bounty Cooldown Info ===");
-        
-        // Check if player is on cooldown
-        if (BountyCooldownManager.isOnCooldown(player.getUniqueId())) {
-            long remainingTime = BountyCooldownManager.getRemainingCooldown(player.getUniqueId());
-            String timeString = BountyCooldownManager.formatRemainingTime(remainingTime);
-            player.sendMessage(ChatColor.RED + "⏰ You are on bounty cooldown!");
-            player.sendMessage(ChatColor.GRAY + "Time remaining: " + ChatColor.WHITE + timeString);
-            player.sendMessage(ChatColor.YELLOW + "💡 No bounties can be placed on you during this time.");
-        } else {
-            player.sendMessage(ChatColor.GREEN + "✓ You are not on bounty cooldown.");
-            player.sendMessage(ChatColor.GRAY + "Bounties can be placed on you normally.");
+    private boolean handleTrackCommand(Player player) {
+        // Check if player is a hunter
+        UUID acceptedBountyTarget = BountyManager.getAcceptedBountyTarget(player.getUniqueId());
+        if (acceptedBountyTarget != null) {
+            Player target = Bukkit.getPlayer(acceptedBountyTarget);
+            if (target != null && target.isOnline()) {
+                double distance = player.getLocation().distance(target.getLocation());
+                String distanceStr = String.format("%.1f", distance);
+                
+                player.sendMessage(ChatColor.GREEN + "=== Tracking Your Target ===");
+                player.sendMessage(ChatColor.GRAY + "Target: " + ChatColor.WHITE + target.getName());
+                player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
+                player.sendMessage(ChatColor.GRAY + "World: " + ChatColor.WHITE + target.getWorld().getName());
+                player.sendMessage(ChatColor.GRAY + "Coordinates: " + ChatColor.WHITE + 
+                    String.format("%.0f, %.0f, %.0f", target.getLocation().getX(), 
+                        target.getLocation().getY(), target.getLocation().getZ()));
+                
+                if (distance <= 1000) {
+                    player.sendMessage(ChatColor.GREEN + "✓ Compass tracking active!");
+                } else {
+                    player.sendMessage(ChatColor.YELLOW + "⚠ Target too far for compass tracking (>1000 blocks)");
+                }
+                
+                return true;
+            } else {
+                player.sendMessage(ChatColor.YELLOW + "Your target is currently offline.");
+                return true;
+            }
         }
         
-        player.sendMessage(ChatColor.GRAY + "Commands:");
-        player.sendMessage(ChatColor.GRAY + "• /bounty cooldown <player> - Check specific player");
+        // Check if player is a target
+        if (BountyManager.hasBounty(player.getUniqueId())) {
+            BountyData bounty = BountyManager.getBounty(player.getUniqueId());
+            if (bounty.isAccepted()) {
+                Player hunter = Bukkit.getPlayer(bounty.getHunterUUID());
+                if (hunter != null && hunter.isOnline()) {
+                    double distance = player.getLocation().distance(hunter.getLocation());
+                    String distanceStr = String.format("%.1f", distance);
+                    
+                    player.sendMessage(ChatColor.RED + "=== Tracking Your Hunter ===");
+                    player.sendMessage(ChatColor.GRAY + "Hunter: " + ChatColor.WHITE + hunter.getName());
+                    player.sendMessage(ChatColor.GRAY + "Distance: " + ChatColor.WHITE + distanceStr + " blocks");
+                    player.sendMessage(ChatColor.GRAY + "World: " + ChatColor.WHITE + hunter.getWorld().getName());
+                    player.sendMessage(ChatColor.GRAY + "Coordinates: " + ChatColor.WHITE + 
+                        String.format("%.0f, %.0f, %.0f", hunter.getLocation().getX(), 
+                            hunter.getLocation().getY(), hunter.getLocation().getZ()));
+                    
+                    if (distance <= 1000) {
+                        player.sendMessage(ChatColor.GREEN + "✓ Compass tracking active!");
+                    } else {
+                        player.sendMessage(ChatColor.YELLOW + "⚠ Hunter too far for compass tracking (>1000 blocks)");
+                    }
+                    
+                    return true;
+                } else {
+                    player.sendMessage(ChatColor.YELLOW + "Your hunter is currently offline.");
+                    return true;
+                }
+            } else {
+                player.sendMessage(ChatColor.YELLOW + "You have a bounty but no one has accepted it yet.");
+                return true;
+            }
+        }
+        
+        player.sendMessage(ChatColor.YELLOW + "You are not currently hunting or being hunted.");
+        return true;
+    }
+    
+    private boolean showHelp(Player player) {
+        player.sendMessage(ChatColor.GOLD + "=== BountyHunter Commands ===");
+        player.sendMessage(ChatColor.GRAY + "• /bounty - Open the bounty menu");
+        player.sendMessage(ChatColor.GRAY + "• /bounty gui - Open the bounty menu");
+        player.sendMessage(ChatColor.GRAY + "• /bounty set <player> <amount> - Set a bounty on a player");
+        player.sendMessage(ChatColor.GRAY + "• /bounty list - List all active bounties");
+        player.sendMessage(ChatColor.GRAY + "• /bounty remove <player> - Remove a bounty you placed");
+        player.sendMessage(ChatColor.GRAY + "• /bounty cooldown check <player> - Check if a player is on cooldown");
         player.sendMessage(ChatColor.GRAY + "• /bounty cooldown list - List all cooldowns");
         player.sendMessage(ChatColor.GRAY + "• /bounty track - Track your target or hunter");
         
@@ -534,18 +378,5 @@ public class BountyCommand implements CommandExecutor {
         player.sendMessage(ChatColor.GREEN + "✓ Cleared " + clearedCount + " bounty cooldowns.");
         
         return true;
-    }
-    
-    private String getCurrencyName(BountyData.CurrencyType currency) {
-        switch (currency) {
-            case DIAMOND:
-                return "Diamond";
-            case EMERALD:
-                return "Emerald";
-            case NETHERITE:
-                return "Netherite Ingot";
-            default:
-                return "Unknown";
-        }
     }
 }
